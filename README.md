@@ -4,6 +4,8 @@ ClearPath replaces a slow marketing-compliance review loop built around spreadsh
 
 Marketing can check creative copy before submitting and see its status and audit trail without asking for an update. Requesters can update any active request by creating a linked version, or archive an entire request history without deleting it. Compliance gets a searchable queue ordered by SLA age and weighted risk, plus an all-requests history with status and product filters and version navigation. Clean submissions can auto-clear while a small random sample remains in the human queue.
 
+The **Rules** page is a read-only reference generated from the same versioned rule configuration used by the live self-check and server-side validation. It explains applicability, severity, rationale, fixes, and example copy; `npm run rules:check` verifies every example against the rules engine. The NMLS ID in its examples is fictional.
+
 ## Architecture
 
 ```text
@@ -85,6 +87,14 @@ Authentication is intentionally stubbed. The role picker writes an HTTP-only rol
 | Attachments and links | V3 overrides the earlier no-upload/API-route scope decision: allow up to five files or links, upload files directly to private Vercel Blob, use an authenticated upload-token Route Handler, and stream file reads through an ownership-checked route. No server action carries file bytes, and attachments always require manual review. |
 | Attachment safety and limits | Block executable extensions; limit files to 100 MB each and five attachments per request. Links are stored as text, opened in a new tab, and never fetched or scraped. Limits are take-home assumptions. |
 | Blob storage deviation | Vercel Blob client uploads require one token Route Handler. Private blob reads are proxied only after role and submission-ownership checks. Non-text files are not processed; their metadata and manual-review flag are stored with each version. |
+| Rules reference source | Generate the reference directly from `RULES`, `RULE_VERSION`, and shared constants so displayed guidance cannot drift from enforced checks. |
+| Rules page audience | Make the reference available to both submitters and reviewers: submitters can correct copy before intake, and reviewers can link to consistent guidance. |
+| Rule ownership | Keep rule content in version-controlled code rather than a database editor; a regulated rules editor needs explicit ownership, approval, and change-history workflows. |
+| Verified examples | Store failing and passing examples with each rule and have the rules check script prove both outcomes in their declared product/channel context. |
+| Rules page numbers | Import severity weights, SLA hours, and QA sampling rate from the shared constants instead of duplicating enforced values in UI copy. |
+| Rules page filters | Use a server-rendered GET form for product, channel, severity, and text search to fit the current stack and provide shareable filter URLs. |
+| Rule flag references | Open each “Why?” reference in a new tab so submitters retain their in-progress creative and reviewers retain their decision context. |
+| Rules page data access | Keep the reference free of database reads; require a demo role but render from static rule configuration. |
 
 ## Throughput story (assumptions, not measured outcomes)
 
@@ -110,6 +120,8 @@ The rule set is inspired by principles from UDAAP, Regulation Z (TILA) advertisi
 2. Replace the role cookie with SSO, tenant-aware authorization, and reviewer assignment.
 3. Instrument real stage timestamps and compare cycle time, false-positive rate, and QA findings against the assumed baseline.
 4. Add notifications only for actionable ownership or SLA events.
+5. Add a Compliance-owned rule editor with an approval workflow and immutable change history.
+6. Let submitters suggest a rule or report a false positive for Compliance to triage.
 
 **Multimedia processing.** Attachments of any format (emails, web pages, PDFs, images, audio, video) are accepted and always routed to manual review, because nothing non-text is processed yet. Next steps: text extraction for .eml and HTML files, OCR for images and scanned PDFs, speech-to-text for audio and video with the same rules run on the transcript, and sampled frame analysis for video. Storage uses private Blob URLs with authenticated application delivery; production should add malware scanning and replace demo role cookies with real authentication.
 
