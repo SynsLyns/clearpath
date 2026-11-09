@@ -1,21 +1,67 @@
 // use prisma-8
 
-model User {
-  id        Int                @id @default(autoincrement())
-  email     String             @unique
-  username  String?
-  name      String?
-  posts     Post[]
-  createdAt DateTime           @default(now()) @onCreate(now())
-  updatedAt temporal.UpdatedAt
+model Submission {
+  id           String       @id @onCreate(uuid())
+  partner      String
+  product      String
+  channel      String
+  creativeText String
+  status       String       @default("pending")
+  riskScore    Int          @default(0)
+  ruleVersion  String
+  submittedBy  String
+  qaSample     Boolean      @default(false)
+  version      Int          @default(1)
+  parentId     String?
+  createdAt    DateTime     @default(now()) @onCreate(now())
+  parent       Submission?  @relation("SubmissionVersions", fields: [parentId], references: [id], onDelete: Cascade)
+  children     Submission[] @relation("SubmissionVersions")
+  ruleChecks   RuleCheck[]
+  reviews      Review[]
+  auditEvents  AuditEvent[]
+
+  @@index([status, createdAt])
+  @@index([parentId])
 }
 
-model Post {
-  id        Int                @id @default(autoincrement())
-  title     String
-  content   String?
-  author    User               @relation(fields: [authorId], references: [id])
-  authorId  Int
-  createdAt DateTime           @default(now()) @onCreate(now())
-  updatedAt temporal.UpdatedAt
+model RuleCheck {
+  id           String     @id @onCreate(uuid())
+  submissionId String
+  ruleId       String
+  severity     String
+  passed       Boolean
+  message      String
+  snippet      String
+  dismissed    Boolean    @default(false)
+  dismissedBy  String?
+  dismissNote  String?
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+}
+
+model Review {
+  id           String     @id @onCreate(uuid())
+  submissionId String
+  reviewer     String
+  decision     String
+  reasonCode   String?
+  comment      String
+  ruleVersion  String
+  createdAt    DateTime   @default(now()) @onCreate(now())
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId, createdAt])
+}
+
+model AuditEvent {
+  id           String     @id @onCreate(uuid())
+  submissionId String
+  actor        String
+  action       String
+  detail       String
+  createdAt    DateTime   @default(now()) @onCreate(now())
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId, createdAt])
 }

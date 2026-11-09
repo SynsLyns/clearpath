@@ -6,8 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "contract:emit": "prisma contract emit"
+    "lint": "eslint app components lib scripts",
+    "contract:emit": "prisma contract emit",
+    "rules:check": "tsx scripts/rules-check.ts",
+    "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -32,6 +34,7 @@
     "eslint-config-next": "16.4.5",
     "prisma": "^8.0.0-rc.33",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
