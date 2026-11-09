@@ -11,6 +11,7 @@ export const STATUSES = [
   "changes_requested",
   "auto_cleared",
   "superseded",
+  "archived",
 ] as const;
 export type SubmissionStatus = (typeof STATUSES)[number];
 
@@ -21,6 +22,7 @@ export const STATUS_LABELS: Record<SubmissionStatus, string> = {
   changes_requested: "Changes requested",
   auto_cleared: "Auto-cleared",
   superseded: "Superseded",
+  archived: "Archived",
 };
 
 export const SEVERITY_WEIGHTS = { high: 3, medium: 1 } as const;

@@ -2,18 +2,30 @@ import Link from "next/link";
 import { AlertTriangle, ArrowRight, Clock3, Inbox, ShieldAlert } from "lucide-react";
 import { PageContainer, PageFooter, PageHeading } from "@/components/app-shell";
 import { QueryToast } from "@/components/query-toast";
+import { ClearFilters } from "@/components/clear-filters";
+import { ReviewerFilters } from "@/components/reviewer-filters";
 import { RiskBadge, StatusBadge } from "@/components/submission-details";
 import { WaitingTime } from "@/components/time-ago";
 import { statusLabel, titleCase } from "@/lib/format";
 import { getPendingQueue, getRuleChecks, getSubmissions, isSlaBreached } from "@/lib/repository";
 import { requireRole } from "@/lib/session";
+import { PRODUCTS } from "@/lib/constants";
+import { getRiskLevel } from "@/lib/rules";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReviewerQueuePage({
   searchParams,
 }: {
-  searchParams: Promise<{ decided?: string; at?: string; flagDismissed?: string }>;
+  searchParams: Promise<{
+    decided?: string;
+    at?: string;
+    flagDismissed?: string;
+    search?: string;
+    product?: string;
+    risk?: string;
+    qa?: string;
+  }>;
 }) {
   await requireRole("reviewer");
   const [allSubmissions, checks, query] = await Promise.all([
@@ -21,13 +33,28 @@ export default async function ReviewerQueuePage({
     getRuleChecks(),
     searchParams,
   ]);
-  const queue = getPendingQueue(allSubmissions.filter((item) => item.status === "pending"));
+  const pending = getPendingQueue(allSubmissions.filter((item) => item.status === "pending"));
   const checkGroups = new Map<string, typeof checks>();
   for (const check of checks) {
     const group = checkGroups.get(check.submissionId) ?? [];
     group.push(check);
     checkGroups.set(check.submissionId, group);
   }
+  const search = query.search?.trim() ?? "";
+  const product = PRODUCTS.find((value) => value === query.product);
+  const risk = ["high", "medium", "clean"].find((value) => value === query.risk);
+  const qa = ["sample", "standard"].find((value) => value === query.qa);
+  const hasFilters = Boolean(search || product || risk || qa);
+  const queue = pending.filter((item) => {
+    const itemChecks = checkGroups.get(item.id) ?? [];
+    const level = getRiskLevel(itemChecks.filter((check) => !check.dismissed));
+    return (
+      (!search || item.partner.toLocaleLowerCase().includes(search.toLocaleLowerCase())) &&
+      (!product || item.product === product) &&
+      (!risk || level === risk) &&
+      (!qa || (qa === "sample" ? item.qaSample : !item.qaSample))
+    );
+  });
   const breached = queue.filter((item) => isSlaBreached(item.createdAt)).length;
   const decidedAt = query.at ? new Date(query.at) : null;
   const decisionMessage = query.decided
@@ -47,16 +74,32 @@ export default async function ReviewerQueuePage({
           description="Work the most time-sensitive submissions first, with rule flags and context up front."
           action={<Link className="button button-outline" href="/analytics">View analytics <ArrowRight size={15} /></Link>}
         />
+        <div className="reviewer-tabs" aria-label="Reviewer views">
+          <Link className="reviewer-tab reviewer-tab-active" href="/reviewer" aria-current="page">Review queue</Link>
+          <Link className="reviewer-tab" href="/reviewer/requests">All requests</Link>
+        </div>
         <div className="queue-summary">
           <div className="queue-summary-copy">
             <div className="queue-summary-icon"><Inbox size={19} /></div>
-            <div><strong>{queue.length} awaiting review</strong><span>Submissions with flags and QA samples</span></div>
+            <div>
+              <strong>{queue.length} {queue.length === 1 ? "submission" : "submissions"} awaiting review</strong>
+              <span>{hasFilters ? `Showing filtered results from ${pending.length} pending submissions` : "Submissions with flags and QA samples"}</span>
+            </div>
           </div>
           <div className="queue-summary-stats">
             <div><span className="summary-dot summary-dot-urgent" /> <strong>{breached}</strong> SLA breached</div>
             <div><Clock3 size={15} /> 24h service level</div>
           </div>
         </div>
+        {pending.length > 0 && (
+          <ReviewerFilters
+            initialSearch={search}
+            initialProduct={product ?? ""}
+            initialRisk={risk ?? ""}
+            initialQa={qa ?? ""}
+            hasFilters={hasFilters}
+          />
+        )}
         <div className="queue-list">
           {queue.length ? queue.map((submission, index) => {
             const rowChecks = (checkGroups.get(submission.id) ?? []).filter((check) => !check.passed && !check.dismissed);
@@ -98,9 +141,19 @@ export default async function ReviewerQueuePage({
           }) : (
             <div className="empty-state queue-empty">
               <div className="empty-icon empty-icon-green"><Inbox size={21} /></div>
-              <h3>You’re all caught up.</h3>
-              <p>New flagged creatives and quality samples will appear here.</p>
-              <span className="queue-clear-note"><StatusBadge status="auto_cleared" /> Clean creatives can clear automatically.</span>
+              {hasFilters ? (
+                <>
+                  <h3>No matching submissions</h3>
+                  <p>Try a different partner or campaign, product, risk level, or review type.</p>
+                  <ClearFilters action="/reviewer" className="button button-outline">Clear filters</ClearFilters>
+                </>
+              ) : (
+                <>
+                  <h3>You’re all caught up.</h3>
+                  <p>New flagged creatives and quality samples will appear here.</p>
+                  <span className="queue-clear-note"><StatusBadge status="auto_cleared" /> Clean creatives can clear automatically.</span>
+                </>
+              )}
             </div>
           )}
         </div>

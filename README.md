@@ -2,7 +2,7 @@
 
 ClearPath replaces a slow marketing-compliance review loop built around spreadsheets and email with a shared submission, triage, decision, and resubmission workspace.
 
-Marketing can check creative copy before submitting and see its status and audit trail without asking for an update. Compliance gets a queue ordered by SLA age and weighted risk, a first-pass rules report, and a structured decision record. Clean submissions can auto-clear while a small random sample remains in the human queue.
+Marketing can check creative copy before submitting and see its status and audit trail without asking for an update. Requesters can update any active request by creating a linked version, or archive an entire request history without deleting it. Compliance gets a searchable queue ordered by SLA age and weighted risk, plus an all-requests history with status and product filters and version navigation. Clean submissions can auto-clear while a small random sample remains in the human queue.
 
 ## Architecture
 
@@ -10,6 +10,7 @@ Marketing can check creative copy before submitting and see its status and audit
 Browser
   └─ Next.js 16 App Router
        ├─ Server Components: role-gated pages and read-only views
+       ├─ Client Components: live search and filter controls
        ├─ Server Actions: validated submission, resubmission, and review mutations
        ├─ Pure TypeScript rules engine (shared by live check and server validation)
        └─ Prisma 8 ORM ── Neon Postgres
@@ -17,7 +18,7 @@ Browser
             └─ Review / AuditEvent
 ```
 
-The app uses server components and server actions only; there is no separate API service or client-side state library. Data access is contract-first through `src/prisma/contract.prisma` and `src/prisma/db.ts`.
+The app uses server components for data-backed views and server actions for mutations; client components handle interactive filters and form state. There is no separate API service or client-side state library. Data access is contract-first through `src/prisma/contract.prisma` and `src/prisma/db.ts`.
 
 ## Run locally
 
@@ -71,6 +72,7 @@ Authentication is intentionally stubbed. The role picker writes an HTTP-only rol
 | Queue ordering | SLA-breached submissions first, then weighted risk score descending, then oldest first. SLA-first reduces starvation while risk still prioritizes higher-impact flags. |
 | APR check | Fire only if the creative states a rate or payment and omits APR. Disclosure requirements are conditional; an always-on check would flag ordinary copy and undermine trust in the rules. |
 | Resubmission | Request changes creates a linked new version. Rework is a major cycle-time cost, so a decision must lead to a visible, actionable next step rather than a dead end. |
+| Request updates and archive | Requester updates always create a new linked version and preserve prior decisions. Archiving hides every version in the chain from the requester list but retains the records and audit trail for Compliance. |
 | Cache Components | Disabled the starter’s Cache Components and partial-prefetching flags because this app follows the plan’s explicit request-time rendering requirement for database-backed pages, and Next.js 16 rejects `force-dynamic` route config when Cache Components is enabled. |
 
 ## Throughput story (assumptions, not measured outcomes)

@@ -19,9 +19,11 @@ import {
   getRuleChecks,
   getReviews,
   getSubmissionBundle,
+  getSubmissionVersionLineage,
   getSubmissions,
 } from "@/lib/repository";
 import { requireRole } from "@/lib/session";
+import { SubmissionVersionHistory } from "@/components/submission-version-history";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +32,7 @@ export default async function ReviewerDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ decided?: string; at?: string }>;
+  searchParams: Promise<{ decided?: string; at?: string; from?: string }>;
 }) {
   await requireRole("reviewer");
   const [{ id }, query] = await Promise.all([params, searchParams]);
@@ -53,9 +55,14 @@ export default async function ReviewerDetailPage({
     ? reviews.filter((review) => review.submissionId === parent.id).at(-1)
     : undefined;
   const pending = getPendingQueue(submissions.filter((item) => item.status === "pending"));
-  const queueIndex = pending.findIndex((item) => item.id === submission.id);
-  const previous = queueIndex > 0 ? pending[queueIndex - 1] : undefined;
-  const next = queueIndex >= 0 ? pending[queueIndex + 1] : undefined;
+  const lineage = getSubmissionVersionLineage(submissions, submission.id);
+  const navigationItems = query.from === "all" ? submissions : pending;
+  const queueIndex = navigationItems.findIndex((item) => item.id === submission.id);
+  const previous = queueIndex > 0 ? navigationItems[queueIndex - 1] : undefined;
+  const next = queueIndex >= 0 ? navigationItems[queueIndex + 1] : undefined;
+  const detailHref = (itemId: string) =>
+    `/reviewer/${itemId}${query.from === "all" ? "?from=all" : ""}`;
+  const returnHref = query.from === "all" ? "/reviewer/requests" : "/reviewer";
   const unresolvedHigh = bundle.checks.filter(
     (check) => !check.passed && !check.dismissed && check.severity === "high",
   ).length;
@@ -68,7 +75,7 @@ export default async function ReviewerDetailPage({
     <>
       <PageContainer>
         <QueryToast key={toastMessage ?? "none"} message={toastMessage} clearKey="decided" />
-        <Link className="back-link" href="/reviewer"><ArrowLeft size={15} /> Review queue</Link>
+        <Link className="back-link" href={returnHref}><ArrowLeft size={15} /> {query.from === "all" ? "All requests" : "Review queue"}</Link>
         <PageHeading
           eyebrow={`Compliance review · v${submission.version}`}
           title={submission.partner}
@@ -118,6 +125,11 @@ export default async function ReviewerDetailPage({
           </div>
 
           <aside className="reviewer-side">
+            <SubmissionVersionHistory
+              submissions={lineage}
+              currentId={submission.id}
+              hrefFor={(versionId) => `/reviewer/${versionId}?from=all`}
+            />
             {submission.status === "pending" ? (
               <section className="content-card decision-card">
                 <div className="decision-heading">
@@ -143,10 +155,10 @@ export default async function ReviewerDetailPage({
               </section>
             )}
             <div className="queue-neighbors">
-              <span>Queue navigation</span>
+              <span>{query.from === "all" ? "All requests navigation" : "Queue navigation"}</span>
               <div>
-                {previous ? <Link href={`/reviewer/${previous.id}`}><ArrowLeft size={14} /> Previous</Link> : <span className="neighbor-disabled"><ArrowLeft size={14} /> Previous</span>}
-                {next ? <Link href={`/reviewer/${next.id}`}>Next <ArrowRight size={14} /></Link> : <span className="neighbor-disabled">Next <ArrowRight size={14} /></span>}
+                {previous ? <Link href={detailHref(previous.id)}><ArrowLeft size={14} /> Previous</Link> : <span className="neighbor-disabled"><ArrowLeft size={14} /> Previous</span>}
+                {next ? <Link href={detailHref(next.id)}>Next <ArrowRight size={14} /></Link> : <span className="neighbor-disabled">Next <ArrowRight size={14} /></span>}
               </div>
             </div>
           </aside>

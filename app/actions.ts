@@ -299,40 +299,73 @@ export async function dismissFlag(
   redirect("/reviewer?flagDismissed=1");
 }
 
-export async function resubmit(
-  parentId: string,
+export async function updateSubmission(
+  submissionId: string,
   _previousState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
   const session = await assertRole("submitter");
+  const partner = String(formData.get("partner") ?? "").trim();
+  const product = String(formData.get("product") ?? "");
+  const channel = String(formData.get("channel") ?? "");
   const creativeText = String(formData.get("creativeText") ?? "").trim();
+
+  if (!partner) return { error: "Enter the partner or campaign name." };
+  if (!PRODUCTS.includes(product as Product)) {
+    return { error: "Choose a valid financial product." };
+  }
+  if (!CHANNELS.includes(channel as Channel)) {
+    return { error: "Choose a valid marketing channel." };
+  }
   if (creativeText.length < 20) {
     return { error: "Creative must be at least 20 characters." };
   }
 
   try {
     await db.transaction(async (tx) => {
-      const parent = await tx.orm.public.Submission
-        .where({ id: parentId })
+      const currentRecords = await tx.orm.public.Submission.all();
+      const selected = currentRecords.find((item) => item.id === submissionId);
+      if (!selected || selected.submittedBy !== session.actor) {
+        throw new ActionStateError("This request is not available to your account.");
+      }
+      const byId = new Map(currentRecords.map((item) => [item.id, item]));
+      let root = selected;
+      while (root.parentId) {
+        const ancestor = byId.get(root.parentId);
+        if (!ancestor) throw new Error(`Version history is incomplete for request ${root.id}.`);
+        root = ancestor;
+      }
+      const lockedRoot = await tx.orm.public.Submission
+        .where({ id: root.id })
         .forUpdate()
         .first();
-      if (!parent || parent.status !== "changes_requested") {
-        throw new ActionStateError(
-          "Only a submission with changes requested can be resubmitted.",
-        );
+      if (!lockedRoot) throw new ActionStateError("This request no longer exists.");
+      const parent = selected.id === root.id
+        ? lockedRoot
+        : await tx.orm.public.Submission
+            .where({ id: selected.id })
+            .forUpdate()
+            .first();
+      if (!parent || parent.submittedBy !== session.actor) {
+        throw new ActionStateError("This request is not available to your account.");
+      }
+      if (parent.status === "archived" || parent.status === "superseded") {
+        throw new ActionStateError("Only the latest, active request version can be updated.");
+      }
+      const children = await tx.orm.public.Submission
+        .where({ parentId: parent.id })
+        .all();
+      if (children.length) {
+        throw new ActionStateError("A newer version already exists for this request.");
       }
 
-      const result = runRules(
-        creativeText,
-        parent.product as Product,
-        parent.channel as Channel,
-      );
+      const result = runRules(creativeText, product as Product, channel as Channel);
       const { failures, detail } = summarizeFlags(result.checks);
       const routing = initialRoute(failures);
       const child = await tx.orm.public.Submission.create({
-        partner: parent.partner,
-        product: parent.product,
-        channel: parent.channel,
+        partner,
+        product,
+        channel,
         creativeText,
         status: routing.status,
         riskScore: result.riskScore,
@@ -343,12 +376,6 @@ export async function resubmit(
         parentId: parent.id,
       });
       await writeChecks(tx, child.id, result.checks);
-      await tx.orm.public.AuditEvent.create({
-        submissionId: child.id,
-        actor: session.actor,
-        action: "resubmitted",
-        detail: `Resubmitted as v${child.version}. Auto-check: ${detail}`,
-      });
       await tx.orm.public.Submission.where({ id: parent.id }).updateAll({
         status: "superseded",
       });
@@ -356,7 +383,13 @@ export async function resubmit(
         submissionId: parent.id,
         actor: session.actor,
         action: "superseded",
-        detail: `Superseded by v${child.version}`,
+        detail: `Superseded by v${child.version} after a requester update.`,
+      });
+      await tx.orm.public.AuditEvent.create({
+        submissionId: child.id,
+        actor: session.actor,
+        action: "updated",
+        detail: `Updated from v${parent.version}. Auto-check: ${detail}`,
       });
 
       if (routing.status === "auto_cleared") {
@@ -390,5 +423,78 @@ export async function resubmit(
 
   revalidatePath("/submissions");
   revalidatePath("/reviewer");
-  redirect("/submissions?resubmitted=1");
+  revalidatePath("/reviewer/requests");
+  revalidatePath("/analytics");
+  redirect("/submissions?updated=1");
+}
+
+export async function archiveSubmission(submissionId: string) {
+  const session = await assertRole("submitter");
+
+  await db.transaction(async (tx) => {
+    const records = await tx.orm.public.Submission.all();
+    const selected = records.find((item) => item.id === submissionId);
+    if (!selected || selected.submittedBy !== session.actor) {
+      throw new Error("This request is not available to your account.");
+    }
+
+    const byId = new Map(records.map((item) => [item.id, item]));
+    let root = selected;
+    while (root.parentId) {
+      const parent = byId.get(root.parentId);
+      if (!parent) throw new Error(`Version history is incomplete for request ${root.id}.`);
+      root = parent;
+    }
+
+    const lockedRoot = await tx.orm.public.Submission
+      .where({ id: root.id })
+      .forUpdate()
+      .first();
+    if (!lockedRoot) throw new Error(`Request version ${root.id} no longer exists.`);
+    const refreshedRecords = await tx.orm.public.Submission.all();
+    const refreshedById = new Map(refreshedRecords.map((item) => [item.id, item]));
+    const refreshedSelected = refreshedById.get(submissionId);
+    if (!refreshedSelected || refreshedSelected.submittedBy !== session.actor) {
+      throw new Error("This request is not available to your account.");
+    }
+
+    let refreshedRoot = refreshedSelected;
+    while (refreshedRoot.parentId) {
+      const parent = refreshedById.get(refreshedRoot.parentId);
+      if (!parent) throw new Error(`Version history is incomplete for request ${refreshedRoot.id}.`);
+      refreshedRoot = parent;
+    }
+
+    const lineage = [refreshedRoot];
+    for (let index = 0; index < lineage.length; index += 1) {
+      lineage.push(...refreshedRecords.filter((item) => item.parentId === lineage[index].id));
+    }
+
+    for (const item of lineage) {
+      const locked = await tx.orm.public.Submission
+        .where({ id: item.id })
+        .forUpdate()
+        .first();
+      if (!locked) throw new Error(`Request version ${item.id} no longer exists.`);
+      if (locked.submittedBy !== session.actor) {
+        throw new Error("This request history contains a version that is not available to your account.");
+      }
+      if (locked.status === "archived") continue;
+      await tx.orm.public.Submission.where({ id: locked.id }).updateAll({
+        status: "archived",
+      });
+      await tx.orm.public.AuditEvent.create({
+        submissionId: locked.id,
+        actor: session.actor,
+        action: "archived",
+        detail: `Archived request version ${locked.version} (previous status: ${locked.status}).`,
+      });
+    }
+  });
+
+  revalidatePath("/submissions");
+  revalidatePath("/reviewer");
+  revalidatePath("/reviewer/requests");
+  revalidatePath("/analytics");
+  redirect("/submissions?archived=1");
 }

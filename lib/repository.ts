@@ -60,3 +60,33 @@ export type SubmissionRecord = Awaited<ReturnType<typeof getSubmissions>>[number
 export type RuleCheckRecord = Awaited<ReturnType<typeof getRuleChecks>>[number];
 export type ReviewRecord = Awaited<ReturnType<typeof getReviews>>[number];
 export type AuditEventRecord = Awaited<ReturnType<typeof getAuditEvents>>[number];
+
+export function getSubmissionVersionLineage(
+  submissions: readonly SubmissionRecord[],
+  submissionId: string,
+): SubmissionRecord[] {
+  const byId = new Map(submissions.map((item) => [item.id, item]));
+  const selected = byId.get(submissionId);
+  if (!selected) return [];
+
+  let root = selected;
+  while (root.parentId) {
+    const parent = byId.get(root.parentId);
+    if (!parent) break;
+    root = parent;
+  }
+
+  const lineage: SubmissionRecord[] = [];
+  const visited = new Set<string>();
+  const pending = [root];
+  while (pending.length) {
+    const item = pending.shift();
+    if (!item || visited.has(item.id)) continue;
+    visited.add(item.id);
+    lineage.push(item);
+    pending.push(...submissions.filter((candidate) => candidate.parentId === item.id));
+  }
+  return lineage.sort(
+    (a, b) => a.version - b.version || a.createdAt.getTime() - b.createdAt.getTime(),
+  );
+}

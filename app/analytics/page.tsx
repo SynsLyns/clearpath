@@ -13,8 +13,11 @@ export default async function AnalyticsPage() {
     getRuleChecks(),
     getReviews(),
   ]);
-  const pending = getPendingQueue(submissions.filter((item) => item.status === "pending"));
-  const reviewedTimes = submissions.flatMap((submission) => {
+  const activeSubmissions = submissions.filter((item) => item.status !== "archived");
+  const activeIds = new Set(activeSubmissions.map((item) => item.id));
+  const activeChecks = checks.filter((check) => activeIds.has(check.submissionId));
+  const pending = getPendingQueue(activeSubmissions.filter((item) => item.status === "pending"));
+  const reviewedTimes = activeSubmissions.flatMap((submission) => {
     const firstHumanReview = reviews
       .filter((review) => review.submissionId === submission.id && review.reviewer !== "System")
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0];
@@ -34,7 +37,7 @@ export default async function AnalyticsPage() {
     group.push(review);
     reviewBySubmission.set(review.submissionId, group);
   }
-  const versionOnesWithDecision = submissions.filter((submission) =>
+  const versionOnesWithDecision = activeSubmissions.filter((submission) =>
     submission.version === 1 && (reviewBySubmission.get(submission.id)?.length ?? 0) > 0,
   );
   const firstPassApproved = versionOnesWithDecision.filter((submission) => {
@@ -44,12 +47,12 @@ export default async function AnalyticsPage() {
   const firstPassRate = versionOnesWithDecision.length
     ? firstPassApproved / versionOnesWithDecision.length
     : null;
-  const autoCleared = submissions.filter((submission) => submission.status === "auto_cleared").length;
-  const autoClearRate = submissions.length ? autoCleared / submissions.length : null;
+  const autoCleared = activeSubmissions.filter((submission) => submission.status === "auto_cleared").length;
+  const autoClearRate = activeSubmissions.length ? autoCleared / activeSubmissions.length : null;
   const breachedCount = pending.filter((submission) => isSlaBreached(submission.createdAt)).length;
 
   const failingRules = new Map<string, { count: number; message: string }>();
-  for (const check of checks) {
+  for (const check of activeChecks) {
     if (check.passed || check.dismissed) continue;
     const current = failingRules.get(check.ruleId) ?? { count: 0, message: check.message };
     current.count += 1;
@@ -58,7 +61,7 @@ export default async function AnalyticsPage() {
   const topRules = [...failingRules.entries()]
     .sort((a, b) => b[1].count - a[1].count)
     .slice(0, 5);
-  const empty = !submissions.length;
+  const empty = !activeSubmissions.length;
 
   return (
     <>
@@ -87,7 +90,7 @@ export default async function AnalyticsPage() {
             icon={<ShieldCheck size={17} />}
             label="Auto-clear rate"
             value={autoClearRate === null ? "—" : `${Math.round(autoClearRate * 100)}%`}
-            note={submissions.length ? `${autoCleared} of ${submissions.length} submissions` : "No submissions yet"}
+            note={activeSubmissions.length ? `${autoCleared} of ${activeSubmissions.length} submissions` : "No submissions yet"}
             accent="mint"
           />
           <MetricCard

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, Clock3, FileText } from "lucide-react";
+import { ArrowLeft, Clock3, FileText } from "lucide-react";
 import { PageContainer, PageFooter, PageHeading } from "@/components/app-shell";
-import { ResubmitForm } from "@/components/resubmit-form";
+import { ArchiveRequestButton } from "@/components/archive-request-button";
+import { UpdateSubmissionForm } from "@/components/update-submission-form";
+import { SubmissionVersionHistory } from "@/components/submission-version-history";
 import {
   AuditTrail,
   FlagRows,
@@ -13,7 +15,7 @@ import {
 } from "@/components/submission-details";
 import { QueryToast } from "@/components/query-toast";
 import { formatDate, titleCase } from "@/lib/format";
-import { getAuditEvents, getRuleChecks, getReviews, getSubmissionBundle, getSubmissions } from "@/lib/repository";
+import { getAuditEvents, getRuleChecks, getReviews, getSubmissionBundle, getSubmissions, getSubmissionVersionLineage } from "@/lib/repository";
 import { requireRole } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +25,7 @@ export default async function SubmissionDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ resubmitted?: string }>;
+  searchParams: Promise<{ resubmitted?: string; updated?: string; archived?: string }>;
 }) {
   const session = await requireRole("submitter");
   const [{ id }, query] = await Promise.all([params, searchParams]);
@@ -40,9 +42,8 @@ export default async function SubmissionDetailPage({
   const parent = submission.parentId
     ? submissions.find((item) => item.id === submission.parentId)
     : undefined;
-  const children = submissions.filter((item) => item.parentId === submission.id);
-  const submissionIds = new Set([submission.id, ...children.map((item) => item.id)]);
-  if (parent) submissionIds.add(parent.id);
+  const lineage = getSubmissionVersionLineage(submissions, submission.id);
+  const submissionIds = new Set(lineage.map((item) => item.id));
   const historyEvents = allEvents.filter((event) => submissionIds.has(event.submissionId));
   const priorReview = parent
     ? allReviews.filter((review) => review.submissionId === parent.id).at(-1)
@@ -51,7 +52,7 @@ export default async function SubmissionDetailPage({
   return (
     <>
       <PageContainer>
-        <QueryToast key={query.resubmitted ?? "none"} message={query.resubmitted ? "Your updated creative has been resubmitted." : undefined} clearKey="resubmitted" />
+        <QueryToast key={`${query.resubmitted ?? ""}${query.updated ?? ""}${query.archived ?? ""}`} message={query.archived ? "Request and version history archived." : query.updated ? "Your update was saved as a new version." : query.resubmitted ? "Your updated creative has been resubmitted." : undefined} clearKey={query.archived ? "archived" : query.updated ? "updated" : "resubmitted"} />
         <Link className="back-link" href="/submissions"><ArrowLeft size={15} /> My submissions</Link>
         <PageHeading
           eyebrow={`Submission · ${formatDate(submission.createdAt)}`}
@@ -78,11 +79,11 @@ export default async function SubmissionDetailPage({
               <FlagRows checks={bundle.checks} />
             </section>
 
-            {submission.status === "changes_requested" && (
+            {submission.status !== "superseded" && submission.status !== "archived" && (
               <section className="content-card">
                 <div className="content-card-heading">
-                  <div><ArrowRight size={17} /><h2>Address feedback</h2></div>
-                  <span>New version</span>
+                  <div><FileText size={17} /><h2>Update request</h2></div>
+                  <span>Creates a new version</span>
                 </div>
                 {priorReview?.comment && (
                   <div className="reviewer-feedback">
@@ -90,12 +91,10 @@ export default async function SubmissionDetailPage({
                     <p>{priorReview.comment}</p>
                   </div>
                 )}
-                <ResubmitForm
-                  submissionId={submission.id}
-                  initialCreative={submission.creativeText}
-                  product={submission.product}
-                  channel={submission.channel}
-                />
+                <UpdateSubmissionForm submission={submission} />
+                <div className="request-actions">
+                  <ArchiveRequestButton submissionId={submission.id} />
+                </div>
               </section>
             )}
 
@@ -106,23 +105,11 @@ export default async function SubmissionDetailPage({
           </div>
 
           <aside className="detail-side-column">
-            <section className="content-card compact-card">
-              <div className="content-card-heading"><div><Clock3 size={17} /><h2>Version history</h2></div></div>
-              <div className="version-history">
-                {parent && <Link href={`/submissions/${parent.id}`} className="version-history-item">
-                  <span className="version-dot" />
-                  <span><strong>v{parent.version} · Previous creative</strong><small>{titleCase(parent.status)}</small></span>
-                </Link>}
-                <div className="version-history-item current">
-                  <span className="version-dot" />
-                  <span><strong>v{submission.version} · This creative</strong><small>{titleCase(submission.status)}</small></span>
-                </div>
-                {children.map((child) => <Link href={`/submissions/${child.id}`} className="version-history-item" key={child.id}>
-                  <span className="version-dot" />
-                  <span><strong>v{child.version} · Updated creative</strong><small>{titleCase(child.status)}</small></span>
-                </Link>)}
-              </div>
-            </section>
+            <SubmissionVersionHistory
+              submissions={lineage}
+              currentId={submission.id}
+              hrefFor={(versionId) => `/submissions/${versionId}`}
+            />
             <section className="content-card compact-card">
               <div className="content-card-heading"><div><Clock3 size={17} /><h2>Activity</h2></div></div>
               <AuditTrail events={historyEvents} />
