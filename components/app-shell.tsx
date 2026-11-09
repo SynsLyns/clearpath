@@ -6,10 +6,12 @@ const NAV: Record<Role, { href: string; label: string }[]> = {
   submitter: [
     { href: "/submit", label: "New submission" },
     { href: "/submissions", label: "My submissions" },
+    { href: "/rules", label: "Rules" },
   ],
   reviewer: [
     { href: "/reviewer", label: "Review queue" },
     { href: "/analytics", label: "Analytics" },
+    { href: "/rules", label: "Rules" },
   ],
 };
 
@@ -61,6 +63,7 @@ export function PageFooter() {
     <footer className="page-footer">
       <span>Rules are inspired by UDAAP, Reg Z, and FTC Endorsement Guides principles.</span>
       <span>Illustrative, not legal advice.</span>
+      <Link href="/rules">View compliance rules</Link>
     </footer>
   );
 }
