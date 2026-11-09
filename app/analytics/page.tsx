@@ -1,17 +1,20 @@
-import { ArrowDownRight, ArrowUpRight, BarChart3, Clock3, ShieldCheck } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, BarChart3, Clock3, Paperclip, ShieldCheck } from "lucide-react";
 import { PageContainer, PageFooter, PageHeading } from "@/components/app-shell";
+import { RuleAuthorityTag } from "@/components/submission-details";
 import { formatDuration, titleCase } from "@/lib/format";
-import { getPendingQueue, getReviews, getRuleChecks, getSubmissions, isSlaBreached } from "@/lib/repository";
+import { getAttachments, getPendingQueue, getReviews, getRuleChecks, getSubmissions, isSlaBreached } from "@/lib/repository";
+import { getRuleAuthority } from "@/lib/rules";
 import { requireRole } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {
   await requireRole("reviewer");
-  const [submissions, checks, reviews] = await Promise.all([
+  const [submissions, checks, reviews, attachments] = await Promise.all([
     getSubmissions(),
     getRuleChecks(),
     getReviews(),
+    getAttachments(),
   ]);
   const activeSubmissions = submissions.filter((item) => item.status !== "archived");
   const activeIds = new Set(activeSubmissions.map((item) => item.id));
@@ -50,17 +53,58 @@ export default async function AnalyticsPage() {
   const autoCleared = activeSubmissions.filter((submission) => submission.status === "auto_cleared").length;
   const autoClearRate = activeSubmissions.length ? autoCleared / activeSubmissions.length : null;
   const breachedCount = pending.filter((submission) => isSlaBreached(submission.createdAt)).length;
+  const manualReviewSubmissions = new Set(
+    attachments
+      .filter((attachment) => activeIds.has(attachment.submissionId))
+      .map((attachment) => attachment.submissionId),
+  );
 
-  const failingRules = new Map<string, { count: number; message: string }>();
+  const failingRules = new Map<string, { count: number; message: string; authority: string | null }>();
   for (const check of activeChecks) {
-    if (check.passed || check.dismissed) continue;
-    const current = failingRules.get(check.ruleId) ?? { count: 0, message: check.message };
+    if (check.passed || check.dismissed || check.ruleId === "manual_review_required") continue;
+    const current = failingRules.get(check.ruleId) ?? {
+      count: 0,
+      message: check.message,
+      authority: check.authority,
+    };
     current.count += 1;
     failingRules.set(check.ruleId, current);
   }
   const topRules = [...failingRules.entries()]
     .sort((a, b) => b[1].count - a[1].count)
     .slice(0, 5);
+  const partnerRows = [...new Set(activeSubmissions.map((submission) => submission.partner))]
+    .map((partner) => {
+      const partnerSubmissions = activeSubmissions.filter((submission) => submission.partner === partner);
+      const initialRequests = partnerSubmissions.filter((submission) => submission.version === 1);
+      const decidedRequests = initialRequests.filter((submission) =>
+        (reviewBySubmission.get(submission.id)?.length ?? 0) > 0,
+      );
+      const firstPassApprovedCount = decidedRequests.filter((submission) => {
+        const firstReview = reviewBySubmission.get(submission.id)?.[0];
+        return firstReview?.decision === "approved" || firstReview?.decision === "auto_cleared";
+      }).length;
+      const ruleCounts = new Map<string, number>();
+      for (const check of activeChecks) {
+        if (
+          check.passed ||
+          check.dismissed ||
+          check.ruleId === "manual_review_required" ||
+          !partnerSubmissions.some((submission) => submission.id === check.submissionId)
+        ) continue;
+        ruleCounts.set(check.ruleId, (ruleCounts.get(check.ruleId) ?? 0) + 1);
+      }
+      const topRule = [...ruleCounts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+      return {
+        partner,
+        submissions: initialRequests.length,
+        firstPassRate: decidedRequests.length
+          ? firstPassApprovedCount / decidedRequests.length
+          : null,
+        topRule,
+      };
+    })
+    .sort((a, b) => b.submissions - a.submissions || a.partner.localeCompare(b.partner));
   const empty = !activeSubmissions.length;
 
   return (
@@ -100,6 +144,13 @@ export default async function AnalyticsPage() {
             note={`${breachedCount} SLA ${breachedCount === 1 ? "breach" : "breaches"} · 24h target`}
             accent="amber"
           />
+          <MetricCard
+            icon={<Paperclip size={17} />}
+            label="Manual review (attachments)"
+            value={`${manualReviewSubmissions.size}`}
+            note="Requests with unprocessed attachments"
+            accent="purple"
+          />
         </div>
 
         <div className="analytics-lower">
@@ -114,7 +165,11 @@ export default async function AnalyticsPage() {
                   const max = topRules[0]?.[1].count ?? 1;
                   return (
                     <div className="rule-bar-row" key={ruleId}>
-                      <div className="rule-bar-label"><strong>{titleCase(ruleId)}</strong><span>{data.count}</span></div>
+                      <div className="rule-bar-label">
+                        <strong>{titleCase(ruleId)}</strong>
+                        <RuleAuthorityTag authority={data.authority ?? getRuleAuthority(ruleId)} />
+                        <span>{data.count}</span>
+                      </div>
                       <div className="rule-bar-track"><span style={{ width: `${Math.max(8, (data.count / max) * 100)}%` }} /></div>
                       <p>{data.message}</p>
                     </div>
@@ -136,6 +191,29 @@ export default async function AnalyticsPage() {
             </div>
           </section>
         </div>
+        <section className="content-card partner-scorecard">
+          <div className="content-card-heading">
+            <div><BarChart3 size={17} /><h2>Partner scorecard</h2></div>
+            <span>Top-level requests · active history</span>
+          </div>
+          {partnerRows.length ? (
+            <div className="table-scroll">
+              <table className="scorecard-table">
+                <thead><tr><th>Partner</th><th>Submissions</th><th>First-pass approval</th><th>Top failing rule</th></tr></thead>
+                <tbody>
+                  {partnerRows.map((row) => (
+                    <tr key={row.partner}>
+                      <td><strong>{row.partner}</strong></td>
+                      <td>{row.submissions}</td>
+                      <td>{row.firstPassRate === null ? "—" : `${Math.round(row.firstPassRate * 100)}%`}</td>
+                      <td>{row.topRule ? titleCase(row.topRule) : "No unresolved flags"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <p className="empty-inline">Not enough data yet.</p>}
+        </section>
         <p className="analytics-footnote">Figures are computed from seeded demo data plus live workspace activity. They are directional examples, not business-performance claims.</p>
       </PageContainer>
       <PageFooter />
@@ -154,7 +232,7 @@ function MetricCard({
   label: string;
   value: string;
   note: string;
-  accent: "blue" | "green" | "mint" | "amber";
+  accent: "blue" | "green" | "mint" | "amber" | "purple";
 }) {
   return (
     <article className={`metric-card metric-${accent}`}>

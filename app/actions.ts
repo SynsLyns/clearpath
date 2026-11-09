@@ -14,6 +14,7 @@ import {
   type Product,
   type ReasonCode,
 } from "@/lib/constants";
+import { parseAttachmentPayload } from "@/lib/attachments";
 import { assertRole } from "@/lib/session";
 import { db } from "@/src/prisma/db";
 import { runRules, type RuleResult } from "@/lib/rules";
@@ -42,7 +43,8 @@ function summarizeFlags(checks: readonly RuleResult[]) {
   return { failures, high, medium, detail: `${high} high, ${medium} medium flags` };
 }
 
-function initialRoute(failures: readonly RuleResult[]) {
+function initialRoute(failures: readonly RuleResult[], hasAttachments = false) {
+  if (hasAttachments) return { status: "pending", qaSample: false };
   if (failures.length > 0) return { status: "pending", qaSample: false };
   if (Math.random() < QA_SAMPLE_RATE) return { status: "pending", qaSample: true };
   return { status: "auto_cleared", qaSample: false };
@@ -60,7 +62,31 @@ async function writeChecks(
       severity: check.severity,
       passed: check.passed,
       message: check.message,
+      authority: check.authority,
       snippet: check.snippet,
+    });
+  }
+}
+
+async function writeAttachments(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  submissionId: string,
+  attachments: readonly {
+    kind: string;
+    name: string;
+    url: string;
+    contentType: string | null;
+    sizeBytes: number | null;
+  }[],
+) {
+  for (const attachment of attachments) {
+    await tx.orm.public.Attachment.create({
+      submissionId,
+      kind: attachment.kind,
+      name: attachment.name,
+      url: attachment.url,
+      contentType: attachment.contentType,
+      sizeBytes: attachment.sizeBytes,
     });
   }
 }
@@ -74,21 +100,29 @@ export async function createSubmission(
   const product = String(formData.get("product") ?? "");
   const channel = String(formData.get("channel") ?? "");
   const creativeText = String(formData.get("creativeText") ?? "").trim();
+  const parsedAttachments = parseAttachmentPayload(String(formData.get("attachments") ?? "[]"));
 
   if (!partner) return { error: "Enter the partner or campaign name." };
+  if (!parsedAttachments.ok) return { error: parsedAttachments.error };
+  const attachments = parsedAttachments.attachments;
   if (!PRODUCTS.includes(product as Product)) {
     return { error: "Choose a valid financial product." };
   }
   if (!CHANNELS.includes(channel as Channel)) {
     return { error: "Choose a valid marketing channel." };
   }
-  if (creativeText.length < 20) {
+  if (creativeText.length < 20 && attachments.length === 0) {
     return { error: "Creative must be at least 20 characters." };
   }
 
-  const result = runRules(creativeText, product as Product, channel as Channel);
+  const result = runRules(
+    creativeText,
+    product as Product,
+    channel as Channel,
+    attachments,
+  );
   const { failures, detail } = summarizeFlags(result.checks);
-  const routing = initialRoute(failures);
+  const routing = initialRoute(failures, attachments.length > 0);
 
   await db.transaction(async (tx) => {
     const submission = await tx.orm.public.Submission.create({
@@ -105,11 +139,12 @@ export async function createSubmission(
       parentId: null,
     });
     await writeChecks(tx, submission.id, result.checks);
+    await writeAttachments(tx, submission.id, attachments);
     await tx.orm.public.AuditEvent.create({
       submissionId: submission.id,
       actor: session.actor,
       action: "submitted",
-      detail: `Auto-check: ${detail}`,
+      detail: `Auto-check: ${detail}; attachments: ${attachments.length}`,
     });
 
     if (routing.status === "auto_cleared") {
@@ -309,18 +344,17 @@ export async function updateSubmission(
   const product = String(formData.get("product") ?? "");
   const channel = String(formData.get("channel") ?? "");
   const creativeText = String(formData.get("creativeText") ?? "").trim();
+  const addedAttachments = parseAttachmentPayload(String(formData.get("attachments") ?? "[]"));
 
   if (!partner) return { error: "Enter the partner or campaign name." };
+  if (!addedAttachments.ok) return { error: addedAttachments.error };
+  const newAttachments = addedAttachments.attachments;
   if (!PRODUCTS.includes(product as Product)) {
     return { error: "Choose a valid financial product." };
   }
   if (!CHANNELS.includes(channel as Channel)) {
     return { error: "Choose a valid marketing channel." };
   }
-  if (creativeText.length < 20) {
-    return { error: "Creative must be at least 20 characters." };
-  }
-
   try {
     await db.transaction(async (tx) => {
       const currentRecords = await tx.orm.public.Submission.all();
@@ -359,9 +393,27 @@ export async function updateSubmission(
         throw new ActionStateError("A newer version already exists for this request.");
       }
 
-      const result = runRules(creativeText, product as Product, channel as Channel);
+      const parentAttachments = await tx.orm.public.Attachment
+        .where({ submissionId: parent.id })
+        .all();
+      if (parentAttachments.length + newAttachments.length > 5) {
+        throw new ActionStateError("A request can have up to 5 attachments, including earlier versions.");
+      }
+      if (creativeText.length < 20 && parentAttachments.length + newAttachments.length === 0) {
+        throw new ActionStateError("Creative must be at least 20 characters unless an attachment is included.");
+      }
+      const attachments = [
+        ...parentAttachments,
+        ...newAttachments,
+      ];
+      const result = runRules(
+        creativeText,
+        product as Product,
+        channel as Channel,
+        attachments,
+      );
       const { failures, detail } = summarizeFlags(result.checks);
-      const routing = initialRoute(failures);
+      const routing = initialRoute(failures, attachments.length > 0);
       const child = await tx.orm.public.Submission.create({
         partner,
         product,
@@ -376,6 +428,7 @@ export async function updateSubmission(
         parentId: parent.id,
       });
       await writeChecks(tx, child.id, result.checks);
+      await writeAttachments(tx, child.id, attachments);
       await tx.orm.public.Submission.where({ id: parent.id }).updateAll({
         status: "superseded",
       });
@@ -389,7 +442,7 @@ export async function updateSubmission(
         submissionId: child.id,
         actor: session.actor,
         action: "updated",
-        detail: `Updated from v${parent.version}. Auto-check: ${detail}`,
+        detail: `Updated from v${parent.version}. Auto-check: ${detail}; attachments: ${attachments.length}`,
       });
 
       if (routing.status === "auto_cleared") {

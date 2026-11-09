@@ -1,5 +1,6 @@
 import { db } from "../src/prisma/db";
 import { RULE_VERSION, USERS } from "../lib/constants";
+import type { AttachmentInput } from "../lib/attachments";
 import { runRules, type RuleResult } from "../lib/rules";
 
 type SeedCreative = {
@@ -14,14 +15,16 @@ type SeedCreative = {
   parentId?: string | null;
   qaSample?: boolean;
   riskScore?: number;
+  attachments?: AttachmentInput[];
 };
 
 const now = Date.now();
 const hoursAgo = (hours: number) => new Date(now - hours * 3_600_000);
 const daysAgo = (days: number, hours = 0) => new Date(now - (days * 24 + hours) * 3_600_000);
+let seededSubmissionCount = 0;
 
 function failuresFor(item: SeedCreative) {
-  return runRules(item.creativeText, item.product, item.channel);
+  return runRules(item.creativeText, item.product, item.channel, item.attachments);
 }
 
 async function main() {
@@ -99,7 +102,33 @@ async function main() {
         status: "auto_cleared",
         createdAt: daysAgo(1),
       },
+      {
+        id: "seed-testimonial",
+        partner: "Summit Card Testimonials",
+        product: "credit_card",
+        channel: "social",
+        creativeText: "Real customers love ClearPath Financial. I saved $2,000 on interest.",
+        status: "pending",
+        createdAt: hoursAgo(2),
+      },
+      {
+        id: "seed-attachment-link",
+        partner: "Sample Landing Page Review",
+        product: "credit_card",
+        channel: "social",
+        creativeText: "",
+        status: "pending",
+        createdAt: hoursAgo(4),
+        attachments: [{
+          kind: "link",
+          name: "Sample landing page",
+          url: "https://example.com/",
+          contentType: null,
+          sizeBytes: null,
+        }],
+      },
     ];
+    seededSubmissionCount = seedItems.length;
 
     for (const item of seedItems) {
       const { checks, riskScore } = failuresFor(item);
@@ -127,7 +156,15 @@ async function main() {
           severity: check.severity,
           passed: check.passed,
           message: check.message,
+          authority: check.authority,
           snippet: check.snippet,
+        });
+      }
+
+      for (const attachment of item.attachments ?? []) {
+        await tx.orm.public.Attachment.create({
+          submissionId: submission.id,
+          ...attachment,
         });
       }
 
@@ -137,7 +174,7 @@ async function main() {
         submissionId: item.id,
         actor: USERS.submitter,
         action: item.version === 2 ? "resubmitted" : "submitted",
-        detail: `${item.version === 2 ? "Resubmitted" : "Auto-check"}: ${summary}`,
+        detail: `${item.version === 2 ? "Resubmitted" : "Auto-check"}: ${summary}; attachments: ${item.attachments?.length ?? 0}`,
         createdAt: item.createdAt,
       });
     }
@@ -232,7 +269,7 @@ async function main() {
     });
   });
 
-  console.log("Seeded 7 ClearPath compliance submissions and their review history.");
+  console.log(`Seeded ${seededSubmissionCount} ClearPath compliance submissions and their review history.`);
 }
 
 function summarize(checks: readonly RuleResult[]) {

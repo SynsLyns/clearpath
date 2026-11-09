@@ -4,13 +4,13 @@ import { PageContainer, PageFooter, PageHeading } from "@/components/app-shell";
 import { QueryToast } from "@/components/query-toast";
 import { ClearFilters } from "@/components/clear-filters";
 import { ReviewerFilters } from "@/components/reviewer-filters";
-import { RiskBadge, StatusBadge } from "@/components/submission-details";
+import { RiskBadge, RuleAuthorityTag, StatusBadge } from "@/components/submission-details";
 import { WaitingTime } from "@/components/time-ago";
 import { statusLabel, titleCase } from "@/lib/format";
-import { getPendingQueue, getRuleChecks, getSubmissions, isSlaBreached } from "@/lib/repository";
+import { getAttachments, getPendingQueue, getRuleChecks, getSubmissions, isSlaBreached } from "@/lib/repository";
 import { requireRole } from "@/lib/session";
-import { PRODUCTS } from "@/lib/constants";
-import { getRiskLevel } from "@/lib/rules";
+import { CHANNELS, PRODUCTS } from "@/lib/constants";
+import { getRiskLevel, getRuleAuthority } from "@/lib/rules";
 
 export const dynamic = "force-dynamic";
 
@@ -23,14 +23,16 @@ export default async function ReviewerQueuePage({
     flagDismissed?: string;
     search?: string;
     product?: string;
+    channel?: string;
     risk?: string;
     qa?: string;
   }>;
 }) {
   await requireRole("reviewer");
-  const [allSubmissions, checks, query] = await Promise.all([
+  const [allSubmissions, checks, attachments, query] = await Promise.all([
     getSubmissions(),
     getRuleChecks(),
+    getAttachments(),
     searchParams,
   ]);
   const pending = getPendingQueue(allSubmissions.filter((item) => item.status === "pending"));
@@ -42,16 +44,47 @@ export default async function ReviewerQueuePage({
   }
   const search = query.search?.trim() ?? "";
   const product = PRODUCTS.find((value) => value === query.product);
+  const channel = CHANNELS.find((value) => value === query.channel);
   const risk = ["high", "medium", "clean"].find((value) => value === query.risk);
   const qa = ["sample", "standard"].find((value) => value === query.qa);
-  const hasFilters = Boolean(search || product || risk || qa);
+  const hasFilters = Boolean(search || product || channel || risk || qa);
+  const levelBySubmission = new Map(pending.map((item) => [
+    item.id,
+    getRiskLevel((checkGroups.get(item.id) ?? []).filter((check) => !check.dismissed)),
+  ]));
+  const countFor = (predicate: (item: (typeof pending)[number]) => boolean) =>
+    pending.filter(predicate).length;
+  const filterCounts = {
+    products: Object.fromEntries(PRODUCTS.map((value) => [
+      value,
+      countFor((item) => item.product === value),
+    ])),
+    channels: Object.fromEntries(CHANNELS.map((value) => [
+      value,
+      countFor((item) => item.channel === value),
+    ])),
+    risks: Object.fromEntries(["high", "medium", "clean"].map((value) => [
+      value,
+      countFor((item) => levelBySubmission.get(item.id) === value),
+    ])),
+    qa: {
+      sample: countFor((item) => item.qaSample),
+      standard: countFor((item) => !item.qaSample),
+    },
+  };
+  const attachmentCounts = new Map<string, number>();
+  for (const attachment of attachments) {
+    attachmentCounts.set(
+      attachment.submissionId,
+      (attachmentCounts.get(attachment.submissionId) ?? 0) + 1,
+    );
+  }
   const queue = pending.filter((item) => {
-    const itemChecks = checkGroups.get(item.id) ?? [];
-    const level = getRiskLevel(itemChecks.filter((check) => !check.dismissed));
     return (
       (!search || item.partner.toLocaleLowerCase().includes(search.toLocaleLowerCase())) &&
       (!product || item.product === product) &&
-      (!risk || level === risk) &&
+      (!channel || item.channel === channel) &&
+      (!risk || levelBySubmission.get(item.id) === risk) &&
       (!qa || (qa === "sample" ? item.qaSample : !item.qaSample))
     );
   });
@@ -95,9 +128,11 @@ export default async function ReviewerQueuePage({
           <ReviewerFilters
             initialSearch={search}
             initialProduct={product ?? ""}
+            initialChannel={channel ?? ""}
             initialRisk={risk ?? ""}
             initialQa={qa ?? ""}
             hasFilters={hasFilters}
+            counts={filterCounts}
           />
         )}
         <div className="queue-list">
@@ -114,6 +149,11 @@ export default async function ReviewerQueuePage({
                       <h2>{submission.partner}</h2>
                       {submission.version > 1 && <span className="version-tag">v{submission.version}</span>}
                       {submission.qaSample && <span className="qa-tag">QA sample</span>}
+                      {(attachmentCounts.get(submission.id) ?? 0) > 0 && (
+                        <span className="attachment-count-tag">
+                          {attachmentCounts.get(submission.id)} attachment{attachmentCounts.get(submission.id) === 1 ? "" : "s"}
+                        </span>
+                      )}
                       {breachedItem && <span className="sla-tag"><AlertTriangle size={12} /> SLA breached</span>}
                     </div>
                     <RiskBadge checks={checkGroups.get(submission.id) ?? []} riskScore={submission.riskScore} />
@@ -127,7 +167,10 @@ export default async function ReviewerQueuePage({
                     {topFlag ? (
                       <p className="queue-flag">
                         <ShieldAlert size={15} />
-                        <span><b>{topFlag.ruleId}</b> {topFlag.message}</span>
+                        <span>
+                          <b>{topFlag.ruleId}</b> {topFlag.message}{" "}
+                          <RuleAuthorityTag authority={topFlag.authority ?? getRuleAuthority(topFlag.ruleId)} />
+                        </span>
                       </p>
                     ) : (
                       <p className="queue-flag queue-flag-clean"><Clock3 size={15} /><span>Selected for a quality-assurance review</span></p>
@@ -144,7 +187,7 @@ export default async function ReviewerQueuePage({
               {hasFilters ? (
                 <>
                   <h3>No matching submissions</h3>
-                  <p>Try a different partner or campaign, product, risk level, or review type.</p>
+                  <p>Try a different partner or campaign, product, channel, risk level, or review type.</p>
                   <ClearFilters action="/reviewer" className="button button-outline">Clear filters</ClearFilters>
                 </>
               ) : (

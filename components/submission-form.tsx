@@ -1,8 +1,11 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useCallback, useMemo, useState } from "react";
 import { AlertCircle, CheckCircle2, Info, Sparkles } from "lucide-react";
 import { CHANNELS, PRODUCTS, type Channel, type Product } from "@/lib/constants";
+import { AttachmentUploader } from "@/components/attachment-uploader";
+import { InsertDisclosuresButton } from "@/components/insert-disclosures-button";
+import { RuleAuthorityTag } from "@/components/submission-details";
 import { titleCase } from "@/lib/format";
 import { runRules, type RuleResult } from "@/lib/rules";
 import { createSubmission, type ActionState } from "@/app/actions";
@@ -27,7 +30,9 @@ function CheckGroup({
           <AlertCircle size={15} />
           <div>
             <strong>{check.message}</strong>
+            <RuleAuthorityTag authority={check.authority} />
             <small>{check.snippet}</small>
+            <small className="rule-fix-hint">Suggested fix: {check.fix}</small>
           </div>
         </div>
       ))}
@@ -40,10 +45,16 @@ export function SubmissionForm() {
   const [product, setProduct] = useState<Product>("personal_loan");
   const [channel, setChannel] = useState<Channel>("affiliate");
   const [creative, setCreative] = useState("");
+  const [attachmentNames, setAttachmentNames] = useState<string[]>([]);
+  const [uploadsReady, setUploadsReady] = useState(true);
+  const onAttachmentsChange = useCallback((names: string[], ready: boolean) => {
+    setAttachmentNames(names);
+    setUploadsReady(ready);
+  }, []);
 
   const result = useMemo(
-    () => runRules(creative, product, channel),
-    [creative, product, channel],
+    () => runRules(creative, product, channel, attachmentNames.map((name) => ({ name }))),
+    [attachmentNames, creative, product, channel],
   );
   const failures = result.checks.filter((check) => !check.passed);
   const high = failures.filter((check) => check.severity === "high");
@@ -87,14 +98,14 @@ export function SubmissionForm() {
             </label>
           </div>
           <label className="field">
-            <span>Creative copy <b>*</b></span>
+            <span>Creative copy {attachmentNames.length ? <small>(optional with an attachment)</small> : <b>*</b>}</span>
             <textarea
               name="creativeText"
               value={creative}
               onChange={(event) => setCreative(event.target.value)}
               placeholder="Paste the complete copy as it will appear to customers..."
-              required
-              minLength={20}
+              required={attachmentNames.length === 0}
+              minLength={attachmentNames.length ? undefined : 20}
               rows={8}
               maxLength={5000}
             />
@@ -103,10 +114,11 @@ export function SubmissionForm() {
               <span>{creative.length}/5,000</span>
             </span>
           </label>
+          <AttachmentUploader onChange={onAttachmentsChange} />
           {state.error && <p className="form-error" role="alert"><AlertCircle size={16} />{state.error}</p>}
-          <button className="button button-primary submit-button" disabled={pending}>
-            {pending ? "Submitting…" : "Submit for compliance review"}
-            {!pending && <Sparkles size={16} />}
+          <button className="button button-primary submit-button" disabled={pending || !uploadsReady}>
+            {pending ? "Submitting…" : !uploadsReady ? "Waiting for uploads…" : "Submit for compliance review"}
+            {!pending && uploadsReady && <Sparkles size={16} />}
           </button>
           <p className="form-privacy">Your submission and every compliance decision are recorded in the audit trail.</p>
         </div>
@@ -119,7 +131,7 @@ export function SubmissionForm() {
           <span className="live-indicator"><i /> Live</span>
         </div>
         <div className="self-check-content">
-          {!creative.trim() ? (
+          {!creative.trim() && attachmentNames.length === 0 ? (
             <div className="self-check-empty">
               <div className="self-check-empty-icon"><Info size={20} /></div>
               <strong>Start with your creative</strong>
@@ -133,6 +145,15 @@ export function SubmissionForm() {
               </div>
               <CheckGroup title="Needs attention" checks={high} tone="high" />
               <CheckGroup title="Review" checks={medium} tone="medium" />
+              {failures.some((check) => [
+                "nmls_missing",
+                "company_name_missing",
+                "equal_housing_missing",
+                "affiliate_disclosure_missing",
+                "testimonial_no_disclosure",
+              ].includes(check.ruleId)) && (
+                <InsertDisclosuresButton text={creative} onInsert={setCreative} />
+              )}
             </>
           ) : (
             <div className="self-check-clear">
@@ -140,6 +161,11 @@ export function SubmissionForm() {
               <strong>No rule flags</strong>
               <p>Eligible for auto-clear. A small quality sample may still be reviewed by Compliance.</p>
             </div>
+          )}
+          {attachmentNames.length > 0 && (
+            <p className="attachment-self-check-note">
+              Attachments can’t be auto-checked yet. This submission will go to manual review.
+            </p>
           )}
         </div>
         <div className="self-check-note">

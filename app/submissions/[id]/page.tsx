@@ -5,6 +5,7 @@ import { PageContainer, PageFooter, PageHeading } from "@/components/app-shell";
 import { ArchiveRequestButton } from "@/components/archive-request-button";
 import { UpdateSubmissionForm } from "@/components/update-submission-form";
 import { SubmissionVersionHistory } from "@/components/submission-version-history";
+import { AttachmentPreviews } from "@/components/attachment-previews";
 import {
   AuditTrail,
   FlagRows,
@@ -71,12 +72,14 @@ export default async function SubmissionDetailPage({
               <HighlightedCreative text={submission.creativeText} checks={bundle.checks} />
             </section>
 
+            <AttachmentPreviews attachments={bundle.attachments} />
+
             <section className="content-card">
               <div className="content-card-heading">
                 <div><Clock3 size={17} /><h2>Automated checks</h2></div>
                 <RiskBadge checks={bundle.checks} riskScore={submission.riskScore} />
               </div>
-              <FlagRows checks={bundle.checks} />
+              <FlagRows checks={bundle.checks} showFix={submission.status === "changes_requested"} />
             </section>
 
             {submission.status !== "superseded" && submission.status !== "archived" && (
@@ -91,7 +94,7 @@ export default async function SubmissionDetailPage({
                     <p>{priorReview.comment}</p>
                   </div>
                 )}
-                <UpdateSubmissionForm submission={submission} />
+                <UpdateSubmissionForm submission={{ ...submission, attachments: bundle.attachments }} />
                 <div className="request-actions">
                   <ArchiveRequestButton submissionId={submission.id} />
                 </div>

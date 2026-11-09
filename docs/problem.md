@@ -11,3 +11,5 @@ The current process is assumed to move campaign copy through email and spreadshe
 | Status ping | About 0.5 day (people asking for updates) | None | Self-serve status list and audit trail |
 
 The assumed baseline totals about five calendar days. With ClearPath, clean creative can bypass a human queue except for the QA sample, and a flagged submission has its issues and reviewer feedback attached to the creative. The target is a shorter, more predictable loop—not a promise that every submission will be approved or decided in a fixed time.
+
+V3 adds rule-level authority labels and suggested fixes, disclosure insertion for common missing items, and reviewer comments drafted from unresolved flags to reduce avoidable rework and typing. Channel-aware queue filters preserve SLA-first ordering, while a partner scorecard makes recurring rule failures visible for coaching. File and link attachments are accepted but always routed to manual review; no OCR, transcription, or link fetching is performed. These additions support the throughput hypothesis but are not measured performance outcomes.

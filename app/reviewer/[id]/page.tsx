@@ -24,6 +24,7 @@ import {
 } from "@/lib/repository";
 import { requireRole } from "@/lib/session";
 import { SubmissionVersionHistory } from "@/components/submission-version-history";
+import { AttachmentPreviews } from "@/components/attachment-previews";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,12 @@ export default async function ReviewerDetailPage({
   const unresolvedHigh = bundle.checks.filter(
     (check) => !check.passed && !check.dismissed && check.severity === "high",
   ).length;
+  const undismissedMessages = bundle.checks
+    .filter((check) => !check.passed && !check.dismissed)
+    .map((check) => check.message);
+  const autoDraftComment = undismissedMessages.length
+    ? `Please fix: ${undismissedMessages.join(" ")}`
+    : "";
   const toastTime = query.at ? new Date(query.at) : null;
   const toastMessage = query.decided
     ? `${statusLabel(query.decided)}${toastTime && !Number.isNaN(toastTime.getTime()) ? `, logged at ${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(toastTime)}` : ""}.`
@@ -110,6 +117,8 @@ export default async function ReviewerDetailPage({
               <div className="creative-meta"><span>Submitted by {submission.submittedBy}</span><RiskBadge checks={bundle.checks} riskScore={submission.riskScore} /></div>
             </section>
 
+            <AttachmentPreviews attachments={bundle.attachments} />
+
             <section className="content-card">
               <div className="content-card-heading">
                 <div><Clock3 size={17} /><h2>Rule flags</h2></div>
@@ -140,6 +149,7 @@ export default async function ReviewerDetailPage({
                 <DecisionForm
                   submissionId={submission.id}
                   unresolvedHigh={unresolvedHigh}
+                  autoDraftComment={autoDraftComment}
                   nextHref={next ? `/reviewer/${next.id}` : undefined}
                   previousHref={previous ? `/reviewer/${previous.id}` : undefined}
                 />

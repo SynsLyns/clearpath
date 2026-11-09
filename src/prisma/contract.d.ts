@@ -23,9 +23,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'0e4f9f4db3eecb8654ce56fd7188eaf4c62a4310d0c78b3c641ee2928ceee132'>;
+  StorageHashBase<'07235bc8fd86185fe85716738033bc79e15e5b8cea3eaa2e13edd08c59ccef0a'>;
 export type ExecutionHash =
-  ExecutionHashBase<'2e51403ee9b1bbacec58bf11db7309c9930001f5a570e309e38521fa7f41731a'>;
+  ExecutionHashBase<'a4c2ece0b8806decb9593519012bad93b26e7d731a2b3d3ad9f66e4bf77dc136'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -309,6 +309,18 @@ export type StorageColumnInputTypes = ColumnTypesFromStorage<
 >;
 
 export namespace Models {
+  export type public_Attachment = {
+    contentType: FieldOutputTypes['public']['Attachment']['contentType'];
+    createdAt: FieldOutputTypes['public']['Attachment']['createdAt'];
+    id: FieldOutputTypes['public']['Attachment']['id'];
+    kind: FieldOutputTypes['public']['Attachment']['kind'];
+    name: FieldOutputTypes['public']['Attachment']['name'];
+    sizeBytes: FieldOutputTypes['public']['Attachment']['sizeBytes'];
+    submissionId: FieldOutputTypes['public']['Attachment']['submissionId'];
+    url: FieldOutputTypes['public']['Attachment']['url'];
+    submission: public_Submission;
+    readonly [RelationKeys]?: 'submission';
+  };
   export type public_AuditEvent = {
     action: FieldOutputTypes['public']['AuditEvent']['action'];
     actor: FieldOutputTypes['public']['AuditEvent']['actor'];
@@ -332,6 +344,7 @@ export namespace Models {
     readonly [RelationKeys]?: 'submission';
   };
   export type public_RuleCheck = {
+    authority: FieldOutputTypes['public']['RuleCheck']['authority'];
     dismissNote: FieldOutputTypes['public']['RuleCheck']['dismissNote'];
     dismissed: FieldOutputTypes['public']['RuleCheck']['dismissed'];
     dismissedBy: FieldOutputTypes['public']['RuleCheck']['dismissedBy'];
@@ -359,17 +372,20 @@ export namespace Models {
     status: FieldOutputTypes['public']['Submission']['status'];
     submittedBy: FieldOutputTypes['public']['Submission']['submittedBy'];
     version: FieldOutputTypes['public']['Submission']['version'];
+    attachments: public_Attachment[];
     auditEvents: public_AuditEvent[];
     children: public_Submission[];
     parent: public_Submission | null;
     reviews: public_Review[];
     ruleChecks: public_RuleCheck[];
-    readonly [RelationKeys]?: 'auditEvents' | 'children' | 'parent' | 'reviews' | 'ruleChecks';
+    readonly [RelationKeys]?:
+      'attachments' | 'auditEvents' | 'children' | 'parent' | 'reviews' | 'ruleChecks';
   };
 }
 
 export declare const models: {
   public: {
+    Attachment: Models.public_Attachment;
     AuditEvent: Models.public_AuditEvent;
     Review: Models.public_Review;
     RuleCheck: Models.public_RuleCheck;
@@ -395,6 +411,90 @@ type ContractBase = Omit<
         readonly kind: 'postgres-schema';
         readonly entries: {
           readonly table: {
+            readonly Attachment: {
+              columns: {
+                readonly contentType: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
+                readonly createdAt: {
+                  readonly dataType: 'pg/timestamptz';
+                  readonly codecId: 'pg/timestamptz-date@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                  readonly typeParams: { readonly precision: 3 };
+                  readonly many: false;
+                };
+                readonly id: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly kind: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly name: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly sizeBytes: {
+                  readonly dataType: 'pg/int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
+                readonly submissionId: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly url: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'Attachment_submissionId_createdAt_idx_0c213691';
+                  readonly prefix: 'Attachment_submissionId_createdAt_idx';
+                  readonly columns: readonly ['submissionId', 'createdAt'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'Attachment_submissionId_idx_89cd3f4e';
+                  readonly prefix: 'Attachment_submissionId_idx';
+                  readonly columns: readonly ['submissionId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'Attachment';
+                    readonly columns: readonly ['submissionId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'Submission';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
             readonly AuditEvent: {
               columns: {
                 readonly action: {
@@ -553,6 +653,12 @@ type ContractBase = Omit<
             };
             readonly RuleCheck: {
               columns: {
+                readonly authority: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
                 readonly dismissNote: {
                   readonly dataType: 'pg/text';
                   readonly codecId: 'pg/text@1';
@@ -784,6 +890,10 @@ type ContractBase = Omit<
   readonly target: 'postgres';
   readonly targetFamily: 'sql';
   readonly roots: {
+    readonly Attachment: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'Attachment';
+    };
     readonly AuditEvent: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'AuditEvent';
@@ -799,6 +909,74 @@ type ContractBase = Omit<
     readonly namespaces: {
       readonly public: {
         readonly models: {
+          readonly Attachment: {
+            readonly fields: {
+              readonly contentType: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-date@1';
+                  readonly typeParams: { readonly precision: 3 };
+                };
+              };
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly kind: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly name: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly sizeBytes: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly submissionId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly url: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+            };
+            readonly relations: {
+              readonly submission: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Submission';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['submissionId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'Attachment';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly contentType: { readonly column: 'contentType' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly id: { readonly column: 'id' };
+                readonly kind: { readonly column: 'kind' };
+                readonly name: { readonly column: 'name' };
+                readonly sizeBytes: { readonly column: 'sizeBytes' };
+                readonly submissionId: { readonly column: 'submissionId' };
+                readonly url: { readonly column: 'url' };
+              };
+            };
+          };
           readonly AuditEvent: {
             readonly fields: {
               readonly action: {
@@ -927,6 +1105,10 @@ type ContractBase = Omit<
           };
           readonly RuleCheck: {
             readonly fields: {
+              readonly authority: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly dismissNote: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
@@ -986,6 +1168,7 @@ type ContractBase = Omit<
               readonly table: 'RuleCheck';
               readonly namespaceId: 'public';
               readonly fields: {
+                readonly authority: { readonly column: 'authority' };
                 readonly dismissNote: { readonly column: 'dismissNote' };
                 readonly dismissed: { readonly column: 'dismissed' };
                 readonly dismissedBy: { readonly column: 'dismissedBy' };
@@ -1059,6 +1242,17 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
+              readonly attachments: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Attachment';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['submissionId'];
+                };
+              };
               readonly auditEvents: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -1173,6 +1367,26 @@ type ContractBase = Omit<
     readonly executionHash: ExecutionHash;
     readonly mutations: {
       readonly defaults: readonly [
+        {
+          readonly onCreate: {
+            readonly id: 'timestampNow';
+            readonly kind: 'generator';
+            readonly params: { readonly precision: 3 };
+          };
+          readonly ref: {
+            readonly entry: 'Attachment';
+            readonly field: 'createdAt';
+            readonly namespace: 'public';
+          };
+        },
+        {
+          readonly onCreate: { readonly id: 'uuidv4'; readonly kind: 'generator' };
+          readonly ref: {
+            readonly entry: 'Attachment';
+            readonly field: 'id';
+            readonly namespace: 'public';
+          };
+        },
         {
           readonly onCreate: {
             readonly id: 'timestampNow';

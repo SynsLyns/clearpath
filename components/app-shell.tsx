@@ -59,8 +59,8 @@ export function AppHeader({ session }: { session: Session | null }) {
 export function PageFooter() {
   return (
     <footer className="page-footer">
-      <span>Rule set is illustrative and not legal advice.</span>
-      <span> In production, Compliance owns and versions it.</span>
+      <span>Rules are inspired by UDAAP, Reg Z, and FTC Endorsement Guides principles.</span>
+      <span>Illustrative, not legal advice.</span>
     </footer>
   );
 }

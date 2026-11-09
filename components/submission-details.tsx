@@ -1,11 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, Check, ChevronRight, Minus, X } from "lucide-react";
 import { decide, dismissFlag, type ActionState } from "@/app/actions";
 import { REASONS, type ReviewDecision } from "@/lib/constants";
 import { formatDate, statusLabel, titleCase } from "@/lib/format";
-import { getRiskLevel } from "@/lib/rules";
+import { getRiskLevel, getRuleAuthority, getRuleFix } from "@/lib/rules";
 import { TimeAgo } from "@/components/time-ago";
 import type {
   AuditEventRecord,
@@ -17,6 +17,22 @@ const initialState: ActionState = {};
 
 export function StatusBadge({ status }: { status: string }) {
   return <span className={`status status-${status}`}>{statusLabel(status)}</span>;
+}
+
+export function RuleAuthorityTag({ authority }: { authority: string }) {
+  return (
+    <span
+      className="rule-authority"
+      title={`Rule inspired by ${authority}. Illustrative, not legal advice.`}
+    >
+      {authority}
+    </span>
+  );
+}
+
+function RuleFixHint({ ruleId }: { ruleId: string }) {
+  const fix = getRuleFix(ruleId);
+  return fix ? <small className="rule-fix-hint">Suggested fix: {fix}</small> : null;
 }
 
 export function RiskBadge({
@@ -111,9 +127,11 @@ function auditSentence(event: AuditEventRecord) {
 export function FlagRows({
   checks,
   canDismiss = false,
+  showFix = false,
 }: {
   checks: readonly RuleCheckRecord[];
   canDismiss?: boolean;
+  showFix?: boolean;
 }) {
   const flagged = checks.filter((check) => !check.passed);
   if (!flagged.length) {
@@ -130,10 +148,14 @@ export function FlagRows({
               <span className={`severity-label severity-${check.severity}`}>{check.severity}</span>
               {check.dismissed && <span className="dismissed-label">Dismissed</span>}
             </div>
-            <p>{check.message}</p>
+            <div className="flag-message">
+              <p>{check.message}</p>
+              <RuleAuthorityTag authority={check.authority ?? getRuleAuthority(check.ruleId)} />
+            </div>
             {check.snippet && (
               <blockquote>{check.snippet === "Not found in creative" ? check.snippet : `“${check.snippet}”`}</blockquote>
             )}
+            {showFix && <RuleFixHint ruleId={check.ruleId} />}
             {check.dismissed && check.dismissNote && (
               <small className="dismiss-note">Override by {check.dismissedBy}: {check.dismissNote}</small>
             )}
@@ -187,18 +209,26 @@ export function ReviewHistory({ reviews }: { reviews: readonly ReviewRecord[] })
 export function DecisionForm({
   submissionId,
   unresolvedHigh,
+  autoDraftComment,
   nextHref,
   previousHref,
 }: {
   submissionId: string;
   unresolvedHigh: number;
+  autoDraftComment: string;
   nextHref?: string;
   previousHref?: string;
 }) {
   const boundAction = decide.bind(null, submissionId);
   const [state, formAction, pending] = useActionState(boundAction, initialState);
   const [decision, setDecision] = useState<ReviewDecision>("approved");
+  const [comment, setComment] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
+
+  const chooseDecision = useCallback((nextDecision: ReviewDecision) => {
+    setDecision(nextDecision);
+    setComment(nextDecision === "approved" ? "" : autoDraftComment);
+  }, [autoDraftComment]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -222,7 +252,7 @@ export function DecisionForm({
       };
       if (decisions[key]) {
         event.preventDefault();
-        setDecision(decisions[key]);
+        chooseDecision(decisions[key]);
       } else if (key === "j" && nextHref) {
         window.location.assign(nextHref);
       } else if (key === "k" && previousHref) {
@@ -231,7 +261,7 @@ export function DecisionForm({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [nextHref, previousHref]);
+  }, [chooseDecision, nextHref, previousHref]);
 
   return (
     <form ref={formRef} className="decision-form" action={formAction}>
@@ -246,7 +276,7 @@ export function DecisionForm({
             type="button"
             aria-pressed={decision === value}
             key={value}
-            onClick={() => setDecision(value)}
+            onClick={() => chooseDecision(value)}
           >
             <Icon size={16} />{label}
           </button>
@@ -269,7 +299,13 @@ export function DecisionForm({
       </label>
       <label className="field">
         <span>Reviewer comment {decision !== "approved" || unresolvedHigh > 0 ? <b>*</b> : null}</span>
-        <textarea name="comment" rows={3} placeholder="Share context, next steps, or what needs to change..." />
+        <textarea
+          name="comment"
+          rows={3}
+          value={comment}
+          onChange={(event) => setComment(event.currentTarget.value)}
+          placeholder="Share context, next steps, or what needs to change..."
+        />
       </label>
       {state.error && <p className="form-error" role="alert"><AlertCircle size={16} />{state.error}</p>}
       <button className="button button-primary decision-submit" disabled={pending}>

@@ -19,6 +19,7 @@ model Submission {
   ruleChecks   RuleCheck[]
   reviews      Review[]
   auditEvents  AuditEvent[]
+  attachments  Attachment[]
 
   @@index([status, createdAt])
   @@index([parentId])
@@ -31,6 +32,7 @@ model RuleCheck {
   severity     String
   passed       Boolean
   message      String
+  authority    String?
   snippet      String
   dismissed    Boolean    @default(false)
   dismissedBy  String?
@@ -38,6 +40,20 @@ model RuleCheck {
   submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 
   @@index([submissionId])
+}
+
+model Attachment {
+  id           String     @id @onCreate(uuid())
+  submissionId String
+  kind         String
+  name         String
+  url          String
+  contentType  String?
+  sizeBytes    Int?
+  createdAt    DateTime   @default(now()) @onCreate(now())
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId, createdAt])
 }
 
 model Review {

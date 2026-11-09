@@ -1,8 +1,11 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useCallback, useMemo, useState } from "react";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { updateSubmission, type ActionState } from "@/app/actions";
+import { AttachmentUploader } from "@/components/attachment-uploader";
+import { InsertDisclosuresButton } from "@/components/insert-disclosures-button";
+import { RuleAuthorityTag } from "@/components/submission-details";
 import { CHANNELS, PRODUCTS, type Channel, type Product } from "@/lib/constants";
 import { titleCase } from "@/lib/format";
 import { runRules } from "@/lib/rules";
@@ -16,6 +19,14 @@ export function UpdateSubmissionForm({
     product: string;
     channel: string;
     creativeText: string;
+    attachments: {
+      id: string;
+      kind: string;
+      name: string;
+      url: string;
+      contentType: string | null;
+      sizeBytes: number | null;
+    }[];
   };
 }) {
   const action = updateSubmission.bind(null, submission.id);
@@ -24,9 +35,16 @@ export function UpdateSubmissionForm({
   const [product, setProduct] = useState<Product>(submission.product as Product);
   const [channel, setChannel] = useState<Channel>(submission.channel as Channel);
   const [creative, setCreative] = useState(submission.creativeText);
+  const [attachmentNames, setAttachmentNames] = useState(() => submission.attachments.map((item) => item.name));
+  const [uploadsReady, setUploadsReady] = useState(true);
+  const onAttachmentsChange = useCallback((names: string[], ready: boolean) => {
+    setAttachmentNames(names);
+    setUploadsReady(ready);
+  }, []);
   const checks = useMemo(
-    () => runRules(creative, product, channel).checks.filter((check) => !check.passed),
-    [channel, creative, product],
+    () => runRules(creative, product, channel, attachmentNames.map((name) => ({ name })))
+      .checks.filter((check) => !check.passed),
+    [attachmentNames, channel, creative, product],
   );
 
   return (
@@ -56,31 +74,57 @@ export function UpdateSubmissionForm({
         </label>
       </div>
       <label className="field">
-        <span>Updated creative copy <b>*</b></span>
+        <span>Updated creative copy {attachmentNames.length ? <small>(optional with an attachment)</small> : <b>*</b>}</span>
         <textarea
           name="creativeText"
           value={creative}
           onChange={(event) => setCreative(event.currentTarget.value)}
           rows={7}
-          minLength={20}
-          required
+          minLength={attachmentNames.length ? undefined : 20}
+          required={attachmentNames.length === 0}
           maxLength={5000}
         />
         <span className="field-hint"><span>Include disclosures and footnotes exactly as they’ll appear.</span><span>{creative.length}/5,000</span></span>
       </label>
+      <AttachmentUploader
+        existingAttachments={submission.attachments}
+        onChange={onAttachmentsChange}
+      />
       <div className="resubmit-check">
         {checks.length ? (
           <>
             <strong><AlertCircle size={16} /> {checks.length} self-check {checks.length === 1 ? "flag" : "flags"} remain</strong>
-            <ul>{checks.map((item) => <li key={item.ruleId}>{item.message}</li>)}</ul>
+            <ul>{checks.map((item) => (
+              <li key={item.ruleId}>
+                <span>{item.message}</span>
+                <RuleAuthorityTag authority={item.authority} />
+                <small className="rule-fix-hint">Suggested fix: {item.fix}</small>
+              </li>
+            ))}</ul>
+            {checks.some((check) => [
+              "nmls_missing",
+              "company_name_missing",
+              "equal_housing_missing",
+              "affiliate_disclosure_missing",
+              "testimonial_no_disclosure",
+            ].includes(check.ruleId)) && (
+              <InsertDisclosuresButton text={creative} onInsert={setCreative} />
+            )}
           </>
         ) : (
           <strong className="check-clear"><CheckCircle2 size={16} /> No rule flags. Eligible for auto-clear.</strong>
         )}
       </div>
       {state.error && <p className="form-error" role="alert"><AlertCircle size={16} />{state.error}</p>}
+      {attachmentNames.length > 0 && (
+        <p className="attachment-self-check-note">
+          Attachments can’t be auto-checked yet. This submission will go to manual review.
+        </p>
+      )}
       <p className="form-privacy">Saving creates a new version. Previous versions and compliance decisions stay in the audit history.</p>
-      <button className="button button-primary" disabled={pending}>{pending ? "Saving update…" : "Save as new version"}</button>
+      <button className="button button-primary" disabled={pending || !uploadsReady}>
+        {pending ? "Saving update…" : !uploadsReady ? "Waiting for uploads…" : "Save as new version"}
+      </button>
     </form>
   );
 }

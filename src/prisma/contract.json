@@ -4,6 +4,10 @@
   "target": "postgres",
   "profileHash": "3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2",
   "roots": {
+    "Attachment": {
+      "model": "Attachment",
+      "namespace": "public"
+    },
     "AuditEvent": {
       "model": "AuditEvent",
       "namespace": "public"
@@ -25,6 +29,117 @@
     "namespaces": {
       "public": {
         "models": {
+          "Attachment": {
+            "fields": {
+              "contentType": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-date@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 3
+                  }
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "kind": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "name": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "sizeBytes": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "submissionId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "url": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "submission": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "submissionId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Submission",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "contentType": {
+                  "column": "contentType"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "kind": {
+                  "column": "kind"
+                },
+                "name": {
+                  "column": "name"
+                },
+                "sizeBytes": {
+                  "column": "sizeBytes"
+                },
+                "submissionId": {
+                  "column": "submissionId"
+                },
+                "url": {
+                  "column": "url"
+                }
+              },
+              "namespaceId": "public",
+              "table": "Attachment"
+            }
+          },
           "AuditEvent": {
             "fields": {
               "action": {
@@ -229,6 +344,13 @@
           },
           "RuleCheck": {
             "fields": {
+              "authority": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "dismissNote": {
                 "nullable": true,
                 "type": {
@@ -320,6 +442,9 @@
             },
             "storage": {
               "fields": {
+                "authority": {
+                  "column": "authority"
+                },
                 "dismissNote": {
                   "column": "dismissNote"
                 },
@@ -453,6 +578,21 @@
               }
             },
             "relations": {
+              "attachments": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "submissionId"
+                  ]
+                },
+                "to": {
+                  "model": "Attachment",
+                  "namespace": "public"
+                }
+              },
               "auditEvents": {
                 "cardinality": "1:N",
                 "on": {
@@ -585,6 +725,104 @@
       "public": {
         "entries": {
           "table": {
+            "Attachment": {
+              "columns": {
+                "contentType": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-date@1",
+                  "dataType": "pg/timestamptz",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 3
+                  }
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": false
+                },
+                "kind": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": false
+                },
+                "name": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": false
+                },
+                "sizeBytes": {
+                  "codecId": "pg/int4@1",
+                  "dataType": "pg/int4",
+                  "nullable": true
+                },
+                "submissionId": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": false
+                },
+                "url": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "index": {
+                    "name": "Attachment_submissionId_idx_89cd3f4e"
+                  },
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "submissionId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "Attachment"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "Submission"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "submissionId",
+                    "createdAt"
+                  ],
+                  "name": "Attachment_submissionId_createdAt_idx_0c213691",
+                  "prefix": "Attachment_submissionId_createdAt_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "submissionId"
+                  ],
+                  "name": "Attachment_submissionId_idx_89cd3f4e",
+                  "prefix": "Attachment_submissionId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
             "AuditEvent": {
               "columns": {
                 "action": {
@@ -773,6 +1011,11 @@
             },
             "RuleCheck": {
               "columns": {
+                "authority": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
                 "dismissNote": {
                   "codecId": "pg/text@1",
                   "dataType": "pg/text",
@@ -1012,12 +1255,37 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "0e4f9f4db3eecb8654ce56fd7188eaf4c62a4310d0c78b3c641ee2928ceee132"
+    "storageHash": "07235bc8fd86185fe85716738033bc79e15e5b8cea3eaa2e13edd08c59ccef0a"
   },
   "execution": {
-    "executionHash": "2e51403ee9b1bbacec58bf11db7309c9930001f5a570e309e38521fa7f41731a",
+    "executionHash": "a4c2ece0b8806decb9593519012bad93b26e7d731a2b3d3ad9f66e4bf77dc136",
     "mutations": {
       "defaults": [
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator",
+            "params": {
+              "precision": 3
+            }
+          },
+          "ref": {
+            "entry": "Attachment",
+            "field": "createdAt",
+            "namespace": "public"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "entry": "Attachment",
+            "field": "id",
+            "namespace": "public"
+          }
+        },
         {
           "onCreate": {
             "id": "timestampNow",

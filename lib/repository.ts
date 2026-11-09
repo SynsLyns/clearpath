@@ -11,6 +11,10 @@ export async function getRuleChecks() {
   return db.orm.public.RuleCheck.all();
 }
 
+export async function getAttachments() {
+  return db.orm.public.Attachment.orderBy((attachment) => attachment.createdAt.asc()).all();
+}
+
 export async function getReviews() {
   return db.orm.public.Review.orderBy((review) => review.createdAt.asc()).all();
 }
@@ -20,7 +24,7 @@ export async function getAuditEvents() {
 }
 
 export async function getSubmissionBundle(id: string) {
-  const [submissions, checks, reviews, events] = await Promise.all([
+  const [submissions, checks, reviews, events, attachments] = await Promise.all([
     db.orm.public.Submission.where({ id }).all(),
     db.orm.public.RuleCheck.where({ submissionId: id }).all(),
     db.orm.public.Review.where({ submissionId: id }).orderBy((review) =>
@@ -29,12 +33,16 @@ export async function getSubmissionBundle(id: string) {
     db.orm.public.AuditEvent.where({ submissionId: id }).orderBy((event) =>
       event.createdAt.asc(),
     ).all(),
+    db.orm.public.Attachment.where({ submissionId: id }).orderBy((attachment) =>
+      attachment.createdAt.asc(),
+    ).all(),
   ]);
   return {
     submission: submissions[0] ?? null,
     checks,
     reviews,
     events,
+    attachments,
   };
 }
 
@@ -60,6 +68,7 @@ export type SubmissionRecord = Awaited<ReturnType<typeof getSubmissions>>[number
 export type RuleCheckRecord = Awaited<ReturnType<typeof getRuleChecks>>[number];
 export type ReviewRecord = Awaited<ReturnType<typeof getReviews>>[number];
 export type AuditEventRecord = Awaited<ReturnType<typeof getAuditEvents>>[number];
+export type AttachmentRecord = Awaited<ReturnType<typeof getAttachments>>[number];
 
 export function getSubmissionVersionLineage(
   submissions: readonly SubmissionRecord[],

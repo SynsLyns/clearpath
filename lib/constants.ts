@@ -27,6 +27,7 @@ export const STATUS_LABELS: Record<SubmissionStatus, string> = {
 
 export const SEVERITY_WEIGHTS = { high: 3, medium: 1 } as const;
 export const RULE_VERSION = "v1";
+export const CLEARPATH_NMLS_ID = "12345678";
 export const SLA_HOURS = 24;
 export const QA_SAMPLE_RATE = 0.1;
 
@@ -56,6 +57,7 @@ export const REASONS = {
       "company_name_missing",
       "equal_housing_missing",
       "affiliate_disclosure_missing",
+      "testimonial_no_disclosure",
     ],
   },
   misleading_urgency: {
@@ -68,7 +70,7 @@ export const REASONS = {
   },
   no_issues: { label: "No issues found", rules: [] },
   false_positive_flags: { label: "False-positive flags", rules: [] },
-  other: { label: "Other", rules: [] },
+  other: { label: "Other", rules: ["manual_review_required"] },
 } as const;
 
 export type ReasonCode = keyof typeof REASONS;

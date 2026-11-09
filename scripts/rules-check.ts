@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { CHANNELS, PRODUCTS, type Channel, type Product } from "../lib/constants";
+import { parseAttachmentPayload } from "../lib/attachments";
 import { RULES, runRules } from "../lib/rules";
 
 type Case = {
@@ -7,6 +8,7 @@ type Case = {
   text: string;
   product: Product;
   channel: Channel;
+  attachments?: { name: string }[];
   failed: string[];
 };
 
@@ -110,8 +112,52 @@ const cases: Case[] = [
     failed: ["urgency_manipulation"],
   },
   {
+    name: "undisclosed testimonial",
+    text: "Real customers love ClearPath Financial. I saved $2,000 on interest.",
+    product: "credit_card",
+    channel: "social",
+    failed: ["testimonial_no_disclosure"],
+  },
+  {
+    name: "testimonial with results disclosure",
+    text: "Real customers love ClearPath Financial. I saved $2,000 on interest. Results may vary.",
+    product: "credit_card",
+    channel: "social",
+    failed: [],
+  },
+  {
+    name: "reviewing an application is not a testimonial",
+    text: "We'll review your application in minutes. ClearPath Financial.",
+    product: "credit_card",
+    channel: "email",
+    failed: [],
+  },
+  {
     name: "a clean credit card creative",
     text: "ClearPath Financial offers flexible credit card options.",
+    product: "credit_card",
+    channel: "email",
+    failed: [],
+  },
+  {
+    name: "empty creative with an attachment skips text rules",
+    text: "",
+    product: "credit_card",
+    channel: "social",
+    attachments: [{ name: "ad.mp4" }],
+    failed: ["manual_review_required"],
+  },
+  {
+    name: "text creative with attachment still runs text rules",
+    text: "ClearPath Financial credit card.",
+    product: "credit_card",
+    channel: "email",
+    attachments: [{ name: "landing-page.html" }],
+    failed: ["manual_review_required"],
+  },
+  {
+    name: "same text without attachment has no flags",
+    text: "ClearPath Financial credit card.",
     product: "credit_card",
     channel: "email",
     failed: [],
@@ -119,11 +165,11 @@ const cases: Case[] = [
 ];
 
 for (const testCase of cases) {
-  const result = runRules(testCase.text, testCase.product, testCase.channel);
+  const result = runRules(testCase.text, testCase.product, testCase.channel, testCase.attachments);
   const failed = result.checks.filter((check) => !check.passed).map((check) => check.ruleId);
   assert.deepEqual(failed, testCase.failed, testCase.name);
   assert.deepEqual(
-    runRules(testCase.text, testCase.product, testCase.channel),
+    runRules(testCase.text, testCase.product, testCase.channel, testCase.attachments),
     result,
     `${testCase.name}: repeat calls are deterministic`,
   );
@@ -140,7 +186,76 @@ for (const testCase of cases) {
 for (const rule of RULES) {
   assert.equal(rule.pattern.global, false, `${rule.id} must not use a stateful global regex`);
   assert.equal(rule.pattern.sticky, false, `${rule.id} must not use a stateful sticky regex`);
+  assert.ok(rule.authority.trim(), `${rule.id} must have an authority label`);
+  assert.ok(rule.fix.trim(), `${rule.id} must have a fix hint`);
 }
+
+const undisclosedTestimonial = runRules(
+  "Real customers love ClearPath Financial. I saved $2,000 on interest.",
+  "credit_card",
+  "social",
+);
+assert.equal(
+  undisclosedTestimonial.checks.find((check) => check.ruleId === "testimonial_no_disclosure")?.snippet,
+  "Real customers",
+);
+const emptyWithAttachment = runRules("", "credit_card", "social", [{ name: "ad.mp4" }]);
+assert.deepEqual(
+  emptyWithAttachment.checks.filter((check) => !check.passed).map(({ ruleId, snippet }) => [ruleId, snippet]),
+  [["manual_review_required", "ad.mp4"]],
+);
+assert.equal(emptyWithAttachment.riskScore, 1);
+const validAttachments = parseAttachmentPayload(JSON.stringify([
+  {
+    kind: "file",
+    name: "campaign.mp4",
+    url: "https://store.private.blob.vercel-storage.com/campaign.mp4",
+    contentType: "video/mp4",
+    sizeBytes: 1024,
+  },
+  {
+    kind: "link",
+    name: "Landing page",
+    url: "https://example.com/",
+    contentType: null,
+    sizeBytes: null,
+  },
+]));
+assert.ok(validAttachments.ok);
+if (!validAttachments.ok) {
+  throw new Error("Valid attachment metadata was rejected.");
+}
+assert.equal(validAttachments.attachments.length, 2);
+const blockedAttachment = parseAttachmentPayload(JSON.stringify([{
+    kind: "file",
+    name: "unsafe.exe",
+    url: "https://store.private.blob.vercel-storage.com/unsafe.exe",
+    contentType: null,
+    sizeBytes: 1,
+  }]));
+assert.ok(!blockedAttachment.ok);
+if (blockedAttachment.ok) throw new Error("Executable attachment was accepted.");
+assert.match(blockedAttachment.error, /cannot be uploaded/);
+const untrustedAttachmentHost = parseAttachmentPayload(JSON.stringify([{
+    kind: "file",
+    name: "image.png",
+    url: "https://example.com/image.png",
+    contentType: "image/png",
+    sizeBytes: 1,
+  }]));
+assert.ok(!untrustedAttachmentHost.ok);
+if (untrustedAttachmentHost.ok) throw new Error("Untrusted attachment host was accepted.");
+assert.match(untrustedAttachmentHost.error, /Vercel Blob/);
+const publicAttachment = parseAttachmentPayload(JSON.stringify([{
+    kind: "file",
+    name: "public-image.png",
+    url: "https://store.public.blob.vercel-storage.com/image.png",
+    contentType: "image/png",
+    sizeBytes: 1,
+  }]));
+assert.ok(!publicAttachment.ok);
+if (publicAttachment.ok) throw new Error("Public attachment URL was accepted.");
+assert.match(publicAttachment.error, /private Vercel Blob/);
 
 const absence = runRules("A short offer for your next chapter.", "personal_loan", "email")
   .checks.find((check) => check.ruleId === "company_name_missing");
