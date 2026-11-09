@@ -30,6 +30,7 @@ function CheckGroup({
           <AlertCircle size={15} />
           <div>
             <strong>{check.message}</strong>
+            <a className="rule-why-link" href={`/rules#rule-${check.ruleId}`} target="_blank" rel="noopener noreferrer">Why?</a>
             <RuleAuthorityTag authority={check.authority} />
             <small>{check.snippet}</small>
             <small className="rule-fix-hint">Suggested fix: {check.fix}</small>

@@ -151,6 +151,7 @@ export function FlagRows({
             <div className="flag-message">
               <p>{check.message}</p>
               <RuleAuthorityTag authority={check.authority ?? getRuleAuthority(check.ruleId)} />
+              <a className="rule-why-link" href={`/rules#rule-${check.ruleId}`} target="_blank" rel="noopener noreferrer">Why?</a>
             </div>
             {check.snippet && (
               <blockquote>{check.snippet === "Not found in creative" ? check.snippet : `“${check.snippet}”`}</blockquote>
