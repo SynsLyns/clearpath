@@ -226,6 +226,26 @@ if (!validAttachments.ok) {
   throw new Error("Valid attachment metadata was rejected.");
 }
 assert.equal(validAttachments.attachments.length, 2);
+
+const ruleIds = new Set<string>();
+for (const rule of RULES) {
+  assert.ok(rule.title.trim(), `${rule.id} must have a title`);
+  assert.ok(rule.description.trim(), `${rule.id} must have a description`);
+  assert.ok(rule.rationale.trim(), `${rule.id} must have a rationale`);
+  assert.ok(rule.fix.trim(), `${rule.id} must have a fix`);
+  assert.ok(!ruleIds.has(rule.id), `${rule.id} must be unique`);
+  ruleIds.add(rule.id);
+
+  if (!rule.examples) continue;
+  const { context, bad, good } = rule.examples;
+  const failingCheck = runRules(bad, context.product, context.channel)
+    .checks.find((check) => check.ruleId === rule.id);
+  assert.equal(failingCheck?.passed, false, `${rule.id}: failing example must fail this rule`);
+  const passingCheck = runRules(good, context.product, context.channel)
+    .checks.find((check) => check.ruleId === rule.id);
+  assert.equal(passingCheck?.passed, true, `${rule.id}: passing example must pass this rule`);
+}
+
 const blockedAttachment = parseAttachmentPayload(JSON.stringify([{
     kind: "file",
     name: "unsafe.exe",
@@ -268,4 +288,6 @@ assert.equal(aprFalsePositive?.snippet, "100%");
 
 assert.deepEqual(PRODUCTS, ["personal_loan", "credit_card", "mortgage"]);
 assert.deepEqual(CHANNELS, ["affiliate", "email", "social", "search", "display"]);
-console.log(`Passed ${cases.length} rule-engine cases and configuration checks.`);
+console.log(
+  `Passed ${cases.length} rule-engine cases, ${RULES.filter((rule) => rule.examples).length} rule examples, and configuration checks.`,
+);
