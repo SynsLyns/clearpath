@@ -1,7 +1,9 @@
-import { get } from "@vercel/blob";
+import { issueSignedToken, presignUrl } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { db } from "@/src/prisma/db";
+
+export const runtime = "nodejs";
 
 export async function GET(
   request: Request,
@@ -13,16 +15,14 @@ export async function GET(
   }
 
   const { id } = await params;
-  const attachments = await db.orm.public.Attachment.where({ id }).all();
-  const attachment = attachments[0];
+  const attachment = await db.orm.public.Attachment.where({ id }).first();
   if (!attachment || attachment.kind !== "file") {
     return new NextResponse("Not found", { status: 404 });
   }
 
-  const submissions = await db.orm.public.Submission
+  const submission = await db.orm.public.Submission
     .where({ id: attachment.submissionId })
-    .all();
-  const submission = submissions[0];
+    .first();
   if (
     !submission ||
     (session.role === "submitter" && submission.submittedBy !== session.actor)
@@ -30,33 +30,59 @@ export async function GET(
     return new NextResponse("Not found", { status: 404 });
   }
 
-  const blob = await get(attachment.url, { access: "private" });
-  if (!blob || blob.statusCode !== 200) {
-    return new NextResponse("Not found", { status: 404 });
+  let blobUrl: URL;
+  try {
+    blobUrl = new URL(attachment.url);
+  } catch {
+    console.error("Attachment has an invalid private Blob URL", { attachmentId: id });
+    return new NextResponse("Attachment could not be loaded.", { status: 502 });
+  }
+  if (
+    blobUrl.protocol !== "https:" ||
+    !blobUrl.hostname.endsWith(".private.blob.vercel-storage.com") ||
+    !blobUrl.pathname.slice(1)
+  ) {
+    console.error("Attachment has an invalid private Blob URL", { attachmentId: id });
+    return new NextResponse("Attachment could not be loaded.", { status: 502 });
   }
 
-  const contentType = blob.blob.contentType;
-  const inlineType =
-    /^image\/(?:jpeg|png|gif|webp|avif)$/.test(contentType) ||
-    /^audio\/(?:aac|flac|mpeg|ogg|wav|webm)$/.test(contentType) ||
-    /^video\/(?:mp4|mpeg|ogg|quicktime|webm)$/.test(contentType);
-  const disposition =
-    new URL(request.url).searchParams.has("download") ||
-    !inlineType
-      ? "attachment"
-      : "inline";
-  const filename = attachment.name.replace(/[^\x20-\x7e]|["\\;]/g, "_") || "attachment";
-  const encodedFilename = encodeURIComponent(attachment.name).replace(
-    /['()*]/g,
-    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
-  );
+  try {
+    const pathname = blobUrl.pathname.slice(1);
+    const validUntil = Date.now() + 5 * 60 * 1000;
+    const signedToken = await issueSignedToken({
+      pathname,
+      operations: ["get"],
+      validUntil,
+    });
+    const { presignedUrl } = await presignUrl(signedToken, {
+      access: "private",
+      operation: "get",
+      pathname,
+      validUntil,
+    });
+    const destination = new URL(presignedUrl);
+    if (destination.hostname !== blobUrl.hostname) {
+      console.error("Signed attachment URL points to a different Blob store", {
+        attachmentId: id,
+      });
+      return new NextResponse("Attachment could not be loaded.", { status: 502 });
+    }
+    const inlineType =
+      /^image\/(?:jpeg|png|gif|webp|avif)$/.test(attachment.contentType ?? "") ||
+      /^audio\/(?:aac|flac|mpeg|ogg|wav|webm)$/.test(attachment.contentType ?? "") ||
+      /^video\/(?:mp4|mpeg|ogg|quicktime|webm)$/.test(attachment.contentType ?? "");
+    const forceDownload =
+      new URL(request.url).searchParams.has("download") || !inlineType;
+    if (forceDownload) destination.searchParams.set("download", "1");
 
-  return new NextResponse(blob.stream, {
-    headers: {
-      "Cache-Control": "private, no-store",
-      "Content-Disposition": `${disposition}; filename="${filename}"; filename*=UTF-8''${encodedFilename}`,
-      "Content-Type": contentType,
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
+    return NextResponse.redirect(destination, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  } catch (error) {
+    console.error("Unable to issue a signed attachment URL", {
+      attachmentId: id,
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
+    return new NextResponse("Attachment could not be loaded.", { status: 502 });
+  }
 }

@@ -56,6 +56,13 @@ const cases: Case[] = [
     failed: [],
   },
   {
+    name: "100% online is not an APR rate trigger",
+    text: "100% online at ClearPath Financial.",
+    product: "credit_card",
+    channel: "email",
+    failed: [],
+  },
+  {
     name: "NMLS applies to personal loans",
     text: "Explore options from ClearPath Financial.",
     product: "personal_loan",
@@ -283,8 +290,7 @@ assert.equal(absence?.snippet, "Not found in creative");
 
 const aprFalsePositive = runRules("100% online at ClearPath Financial.", "credit_card", "email")
   .checks.find((check) => check.ruleId === "apr_missing");
-assert.equal(aprFalsePositive?.passed, false, "The documented 100% online limitation remains visible");
-assert.equal(aprFalsePositive?.snippet, "100%");
+assert.equal(aprFalsePositive?.passed, true, "The '100% online' phrase is not a stated rate");
 
 assert.deepEqual(PRODUCTS, ["personal_loan", "credit_card", "mortgage"]);
 assert.deepEqual(CHANNELS, ["affiliate", "email", "social", "search", "display"]);

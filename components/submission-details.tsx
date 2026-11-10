@@ -128,10 +128,12 @@ export function FlagRows({
   checks,
   canDismiss = false,
   showFix = false,
+  dismissFrom,
 }: {
   checks: readonly RuleCheckRecord[];
   canDismiss?: boolean;
   showFix?: boolean;
+  dismissFrom?: "all";
 }) {
   const flagged = checks.filter((check) => !check.passed);
   if (!flagged.length) {
@@ -161,7 +163,9 @@ export function FlagRows({
             {check.dismissed && check.dismissNote && (
               <small className="dismiss-note">Override by {check.dismissedBy}: {check.dismissNote}</small>
             )}
-            {canDismiss && !check.dismissed && <DismissFlagForm ruleCheckId={check.id} />}
+            {canDismiss && !check.dismissed && (
+              <DismissFlagForm ruleCheckId={check.id} dismissFrom={dismissFrom} />
+            )}
           </div>
         </article>
       ))}
@@ -169,11 +173,18 @@ export function FlagRows({
   );
 }
 
-function DismissFlagForm({ ruleCheckId }: { ruleCheckId: string }) {
+function DismissFlagForm({
+  ruleCheckId,
+  dismissFrom,
+}: {
+  ruleCheckId: string;
+  dismissFrom?: "all";
+}) {
   const [state, formAction, pending] = useActionState(dismissFlag, initialState);
   return (
     <form className="dismiss-form" action={formAction}>
       <input type="hidden" name="ruleCheckId" value={ruleCheckId} />
+      {dismissFrom && <input type="hidden" name="from" value={dismissFrom} />}
       <label className="sr-only" htmlFor={`dismiss-${ruleCheckId}`}>Reason for dismissing this flag</label>
       <input id={`dismiss-${ruleCheckId}`} name="note" placeholder="Why is this a false positive?" required minLength={3} />
       <button className="button button-quiet" disabled={pending}>{pending ? "Saving…" : "Dismiss flag"}</button>

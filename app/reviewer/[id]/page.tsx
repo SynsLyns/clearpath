@@ -33,7 +33,7 @@ export default async function ReviewerDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ decided?: string; at?: string; from?: string }>;
+  searchParams: Promise<{ decided?: string; at?: string; from?: string; flagDismissed?: string }>;
 }) {
   await requireRole("reviewer");
   const [{ id }, query] = await Promise.all([params, searchParams]);
@@ -74,14 +74,17 @@ export default async function ReviewerDetailPage({
     ? `Please fix: ${undismissedMessages.join(" ")}`
     : "";
   const toastTime = query.at ? new Date(query.at) : null;
-  const toastMessage = query.decided
-    ? `${statusLabel(query.decided)}${toastTime && !Number.isNaN(toastTime.getTime()) ? `, logged at ${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(toastTime)}` : ""}.`
-    : undefined;
+  const toastMessage = query.flagDismissed
+    ? "Flag dismissed. Risk score updated."
+    : query.decided
+      ? `${statusLabel(query.decided)}${toastTime && !Number.isNaN(toastTime.getTime()) ? `, logged at ${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(toastTime)}` : ""}.`
+      : undefined;
+  const toastKey = query.flagDismissed ? "flagDismissed" : "decided";
 
   return (
     <>
       <PageContainer>
-        <QueryToast key={toastMessage ?? "none"} message={toastMessage} clearKey="decided" />
+        <QueryToast key={toastMessage ?? "none"} message={toastMessage} clearKey={toastKey} />
         <Link className="back-link" href={returnHref}><ArrowLeft size={15} /> {query.from === "all" ? "All requests" : "Review queue"}</Link>
         <PageHeading
           eyebrow={`Compliance review · v${submission.version}`}
@@ -131,7 +134,11 @@ export default async function ReviewerDetailPage({
                 <div><Clock3 size={17} /><h2>Rule flags</h2></div>
                 <span>{bundle.checks.filter((check) => !check.passed && !check.dismissed).length} unresolved</span>
               </div>
-              <FlagRows checks={bundle.checks} canDismiss={submission.status === "pending"} />
+              <FlagRows
+                checks={bundle.checks}
+                canDismiss={submission.status === "pending"}
+                dismissFrom={query.from === "all" ? "all" : undefined}
+              />
             </section>
 
             <section className="content-card">

@@ -142,7 +142,7 @@ export const RULES: readonly Rule[] = [
     },
     applies: () => true,
     pattern:
-      /(\d+(\.\d+)?\s*%|as\s+low\s+as|\$\s?\d[\d,]*\s*(\/|per|a)\s*(mo|month))/i,
+      /(\b(?!100\s*%\s+online\b)\d+(\.\d+)?\s*%|as\s+low\s+as|\$\s?\d[\d,]*\s*(\/|per|a)\s*(mo|month))/i,
     message: "A stated rate or payment requires an APR disclosure.",
     mode: "apr",
   },

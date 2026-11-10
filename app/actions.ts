@@ -377,15 +377,18 @@ export async function dismissFlag(
   const session = await assertRole("reviewer");
   const ruleCheckId = String(formData.get("ruleCheckId") ?? "");
   const note = String(formData.get("note") ?? "").trim();
+  const returnToAllRequests = formData.get("from") === "all";
   if (!ruleCheckId) return { error: "Choose a flag to dismiss." };
   if (note.length < 3) return { error: "Add a short note explaining the override." };
 
+  let submissionId: string | undefined;
   try {
     await db.transaction(async (tx) => {
       const initialCheck = await tx.orm.public.RuleCheck
         .where({ id: ruleCheckId })
         .first();
       if (!initialCheck) throw new ActionStateError("Rule flag not found.");
+      submissionId = initialCheck.submissionId;
       const submission = await tx.orm.public.Submission.where({
         id: initialCheck.submissionId,
       }).forUpdate().first();
@@ -430,8 +433,11 @@ export async function dismissFlag(
     throw error;
   }
 
-  revalidatePath("/reviewer");
-  redirect("/reviewer?flagDismissed=1");
+  if (!submissionId) throw new Error("Dismissed flag has no associated submission.");
+  revalidatePath(`/reviewer/${submissionId}`);
+  redirect(
+    `/reviewer/${submissionId}?flagDismissed=1${returnToAllRequests ? "&from=all" : ""}`,
+  );
 }
 
 export async function updateSubmission(

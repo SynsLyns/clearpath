@@ -156,7 +156,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   background: linear-gradient(132deg, #102b28 0%, #163b32 49%, #1b493d 100%);
   color: #fff;
 }
-.landing::before { position: absolute; inset: 0; background-image: linear-gradient(rgba(225,242,231,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(225,242,231,.035) 1px, transparent 1px); background-size: 48px 48px; content: ""; mask-image: linear-gradient(to bottom, black, transparent 86%); }
+.landing::before { position: absolute; inset: 0; background-image: linear-gradient(rgba(225,242,231,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(225,242,231,.035) 1px, transparent 1px); background-size: 48px 48px; content: ""; mask-image: linear-gradient(to bottom, black, transparent 86%); pointer-events: none; }
 .landing-glow { position: absolute; width: 500px; height: 500px; border-radius: 50%; filter: blur(1px); pointer-events: none; }
 .landing-glow-one { top: -350px; right: 2%; background: rgba(71, 159, 117, .2); }
 .landing-glow-two { bottom: 1%; left: -380px; background: rgba(33, 118, 102, .16); }
