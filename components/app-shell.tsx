@@ -10,6 +10,7 @@ const NAV: Record<Role, { href: string; label: string }[]> = {
   ],
   reviewer: [
     { href: "/reviewer", label: "Review queue" },
+    { href: "/reviewer/exports", label: "Exports" },
     { href: "/analytics", label: "Analytics" },
     { href: "/rules", label: "Rules" },
   ],

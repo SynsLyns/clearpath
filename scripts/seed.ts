@@ -33,6 +33,7 @@ async function main() {
     await tx.orm.public.Review.where((review) => review.id.like("seed-%")).deleteAll();
     await tx.orm.public.RuleCheck.where((check) => check.id.like("seed-%")).deleteAll();
     await tx.orm.public.Submission.where((submission) => submission.id.like("seed-%")).deleteAll();
+    await tx.orm.public.ExportLog.where((log) => log.id.like("seed-%")).deleteAll();
 
     const seedItems: SeedCreative[] = [
       {
@@ -267,9 +268,35 @@ async function main() {
       detail: `Auto-cleared under rule set ${RULE_VERSION}`,
       createdAt: daysAgo(1),
     });
+
+    const seedFilters = JSON.stringify({
+      from: daysAgo(29).toISOString().slice(0, 10),
+      to: new Date(now).toISOString().slice(0, 10),
+      partner: "",
+      product: "",
+      channel: "",
+      status: "",
+      includeCreativeText: false,
+    });
+    await tx.orm.public.ExportLog.create({
+      id: "seed-export-submissions",
+      actor: USERS.reviewer,
+      kind: "submissions",
+      filters: seedFilters,
+      rowCount: seedItems.length,
+      createdAt: hoursAgo(2),
+    });
+    await tx.orm.public.ExportLog.create({
+      id: "seed-export-decisions",
+      actor: USERS.reviewer,
+      kind: "decisions",
+      filters: seedFilters,
+      rowCount: 4,
+      createdAt: hoursAgo(26),
+    });
   });
 
-  console.log(`Seeded ${seededSubmissionCount} ClearPath compliance submissions and their review history.`);
+  console.log(`Seeded ${seededSubmissionCount} ClearPath compliance submissions, review history, and export history.`);
 }
 
 function summarize(checks: readonly RuleResult[]) {
