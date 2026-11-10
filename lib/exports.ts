@@ -15,7 +15,7 @@ import {
   getReviews,
   type SubmissionRecord,
 } from "./repository";
-import { statusLabel } from "./format";
+import { statusLabel, titleCase } from "./format";
 import { formatUtc, truncateCreativeText, type CsvColumn, type CsvRow } from "./csv";
 import { getRiskLevel } from "./rules";
 
@@ -144,7 +144,7 @@ function parseEnum<T extends string>(
   values: readonly T[],
   label: string,
 ): T | "" {
-  if (!value) return "";
+  if (value === undefined || value === "") return "";
   if (typeof value !== "string") {
     throw new ExportFilterError(`Choose a valid ${label}.`);
   }
@@ -180,8 +180,8 @@ export function parseExportFilters(
   if (partner.length > 200) throw new ExportFilterError("Partner or campaign search is too long.");
   const includeCreativeText = params.includeCreativeText;
   if (includeCreativeText !== undefined &&
-    includeCreativeText !== "true" && includeCreativeText !== "false" &&
-    typeof includeCreativeText !== "boolean") {
+    typeof includeCreativeText !== "boolean" &&
+    includeCreativeText !== "true" && includeCreativeText !== "false") {
     throw new ExportFilterError("Choose a valid creative-text option.");
   }
 
@@ -254,7 +254,9 @@ export async function buildExports(filters: ExportFilters): Promise<Record<Expor
     .map((submission) => {
       const rowChecks = checksBySubmission.get(submission.id) ?? [];
       const rowReviews = [...(reviewsBySubmission.get(submission.id) ?? [])]
-        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+        .sort((a, b) =>
+          a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id),
+        );
       const firstReview = rowReviews[0];
       const finalReview = rowReviews.at(-1);
       const rowAttachments = attachmentsBySubmission.get(submission.id) ?? [];
@@ -267,7 +269,7 @@ export async function buildExports(filters: ExportFilters): Promise<Record<Expor
         channel: submission.channel,
         status: statusLabel(submission.status),
         risk_score: submission.riskScore,
-        risk_level: getRiskLevel(rowChecks.filter((check) => !check.dismissed)),
+        risk_level: titleCase(getRiskLevel(rowChecks.filter((check) => !check.dismissed))),
         failed_rule_ids: rowChecks
           .filter((check) => !check.passed && !check.dismissed)
           .map((check) => check.ruleId)

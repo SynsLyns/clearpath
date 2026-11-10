@@ -17,10 +17,19 @@ Browser
        ├─ Pure TypeScript rules engine (shared by live check and server validation)
        └─ Prisma 8 ORM ── Neon Postgres
             ├─ Submission / RuleCheck
-            └─ Review / AuditEvent
+            ├─ Review / AuditEvent
+            └─ ExportLog
 ```
 
 The app uses server components for data-backed views and server actions for mutations; client components handle interactive filters and form state. There is no separate API service or client-side state library. Data access is contract-first through `src/prisma/contract.prisma` and `src/prisma/db.ts`.
+
+## Compliance exports
+
+Reviewers can use **Exports** to download four filtered CSVs: the submissions register, decision log, audit events, and failed-rule detail. Filters cover the UTC date range, partner/campaign, product, channel, and status; the submissions register can optionally include creative text. CSV output uses Excel-safe formula-injection protection, UTF-8 BOM, and UTC timestamps. Exports are limited to 4 MB; narrow the filters if a download exceeds that cap.
+
+Each successful CSV download and printable compliance record is recorded in the append-only `ExportLog` with the reviewer, export type, filters, row count, and timestamp. Export actions check the reviewer role server-side. The printable submission record includes its version chain, creative, flags, decisions, activity, and attachment metadata; use the browser's **Print / Save as PDF**. File links remain authenticated ClearPath links. CSVs include attachment names and counts only, never stored Blob URLs. This maintains v3's private Blob delivery rather than following the add-on plan's outdated description of public blobs.
+
+`RuleCheck` has no independent checked-at timestamp, so the flag export's `checked_at_utc` uses the associated submission's creation time. It should not be interpreted as a separately measured rule-engine execution time.
 
 ## Run locally
 
@@ -49,6 +58,7 @@ Useful checks:
 
 ```sh
 npm run rules:check
+npx tsx scripts/export-check.ts
 npm run lint
 npm run build
 ```
@@ -95,6 +105,12 @@ Authentication is intentionally stubbed. The role picker writes an HTTP-only rol
 | Rules page filters | Use a server-rendered GET form for product, channel, severity, and text search to fit the current stack and provide shareable filter URLs. |
 | Rule flag references | Open each “Why?” reference in a new tab so submitters retain their in-progress creative and reviewers retain their decision context. |
 | Rules page data access | Keep the reference free of database reads; require a demo role but render from static rule configuration. |
+| Export delivery | Return CSV data from reviewer-guarded server actions and download it as a browser Blob; do not add a download API route. |
+| Export formats | Use CSV for tabular data and browser print-to-PDF for a single submission record instead of adding XLSX or PDF dependencies. |
+| Export timestamps | Format exported timestamps in UTC as `YYYY-MM-DD HH:MM:SS` and mark timestamp column names with `_utc`. |
+| Export attachment data | Include attachment counts and names, but never URLs. Keep private Blob links behind the existing authenticated in-app delivery. |
+| Export audit trail | Record each successful CSV and printable-record export in `ExportLog`, including actor, kind, filters, row count, and time. |
+| Flag check timestamp | Use the submission timestamp as `checked_at_utc` because the current RuleCheck model does not record a check timestamp. |
 
 ## Throughput story (assumptions, not measured outcomes)
 
@@ -122,6 +138,10 @@ The rule set is inspired by principles from UDAAP, Regulation Z (TILA) advertisi
 4. Add notifications only for actionable ownership or SLA events.
 5. Add a Compliance-owned rule editor with an approval workflow and immutable change history.
 6. Let submitters suggest a rule or report a false positive for Compliance to triage.
+7. Add XLSX export when spreadsheet formatting or multiple worksheets are needed.
+8. Add streamed downloads for exports larger than the current 4 MB cap; this would require a download route.
+9. Add scheduled exports with an appropriate notification and delivery mechanism.
+10. Add tamper-evident file hashes and define retention and redaction rules for exported personal data.
 
 **Multimedia processing.** Attachments of any format (emails, web pages, PDFs, images, audio, video) are accepted and always routed to manual review, because nothing non-text is processed yet. Next steps: text extraction for .eml and HTML files, OCR for images and scanned PDFs, speech-to-text for audio and video with the same rules run on the transcript, and sampled frame analysis for video. Storage uses private Blob URLs with authenticated application delivery; production should add malware scanning and replace demo role cookies with real authentication.
 

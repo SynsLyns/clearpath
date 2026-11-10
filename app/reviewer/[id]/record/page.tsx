@@ -178,7 +178,7 @@ export default async function ComplianceRecordPage({
                       <span>v{versionById.get(attachment.submissionId)} · {attachment.contentType ?? attachment.kind} · {sizeLabel(attachment.sizeBytes)}</span>
                     </div>
                     {attachment.kind === "file" ? (
-                      <Link href={`/api/attachments/${attachment.id}`}>Open through ClearPath</Link>
+                      <a href={`/api/attachments/${attachment.id}`}>Open through ClearPath</a>
                     ) : (
                       <Link href={`/reviewer/${attachment.submissionId}?from=all`}>View link on submission</Link>
                     )}
