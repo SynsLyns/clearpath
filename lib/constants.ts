@@ -26,7 +26,7 @@ export const STATUS_LABELS: Record<SubmissionStatus, string> = {
 };
 
 export const SEVERITY_WEIGHTS = { high: 3, medium: 1 } as const;
-export const RULE_VERSION = "v1";
+export const RULE_VERSION = "v2";
 export const CLEARPATH_NMLS_ID = "12345678";
 export const SLA_HOURS = 24;
 export const QA_SAMPLE_RATE = 0.1;

@@ -20,6 +20,7 @@ import { getAuditEvents, getRuleChecks, getReviews, getSubmissionBundle, getSubm
 import { requireRole } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export default async function SubmissionDetailPage({
   params,
@@ -94,7 +95,19 @@ export default async function SubmissionDetailPage({
                     <p>{priorReview.comment}</p>
                   </div>
                 )}
-                <UpdateSubmissionForm submission={{ ...submission, attachments: bundle.attachments }} />
+                <UpdateSubmissionForm
+                  submission={{
+                    ...submission,
+                    attachments: bundle.attachments.map((attachment) => ({
+                      id: attachment.id,
+                      kind: attachment.kind,
+                      name: attachment.name,
+                      url: attachment.url,
+                      contentType: attachment.contentType,
+                      sizeBytes: attachment.sizeBytes,
+                    })),
+                  }}
+                />
                 <div className="request-actions">
                   <ArchiveRequestButton submissionId={submission.id} />
                 </div>

@@ -39,6 +39,7 @@ type Rule = {
 };
 
 export type RuleAttachment = { name: string };
+export type SubmissionRuleAttachment = RuleAttachment & { extractedText: string | null };
 
 export type RuleResult = {
   ruleId: RuleId;
@@ -48,6 +49,7 @@ export type RuleResult = {
   authority: string;
   fix: string;
   snippet: string;
+  sourceName?: string | null;
 };
 
 export { RULE_VERSION };
@@ -294,13 +296,13 @@ export const RULES: readonly Rule[] = [
     id: "manual_review_required",
     title: "Attachment needs manual review",
     description: "The submission includes an attachment.",
-    rationale: "Automated checks cannot read this file type yet.",
+    rationale: "Text extraction can miss content or visual context, so reviewers must inspect the original file.",
     severity: "medium",
     authority: "Company policy",
-    fix: "Nothing required; adding the text of the creative speeds up review.",
+    fix: "Review the original attachment, including its layout and visual content.",
     applies: (_product, _channel, attachments) => attachments.length > 0,
     pattern: /$^/,
-    message: "Attachment requires manual review: automated checks cannot read this file type yet.",
+    message: "Attachment requires manual review, even when extracted text passes automated checks.",
     mode: "manual",
   },
 ];
@@ -378,6 +380,37 @@ export function runRules(
       check.passed ? score : score + SEVERITY_WEIGHTS[check.severity],
     0,
   );
+  return { checks, riskScore };
+}
+
+export function runSubmissionRules(
+  creativeText: string,
+  product: Product,
+  channel: Channel,
+  attachments: readonly SubmissionRuleAttachment[],
+) {
+  const creative = runRules(
+    creativeText,
+    product,
+    channel,
+    attachments.map(({ name }) => ({ name })),
+  );
+  const checks = creative.checks.map((check) => ({
+    ...check,
+    sourceName: check.ruleId === "manual_review_required" ? null : "Creative copy",
+  }));
+  let riskScore = creative.riskScore;
+
+  for (const [index, attachment] of attachments.entries()) {
+    if (!attachment.extractedText) continue;
+    const result = runRules(attachment.extractedText, product, channel);
+    riskScore += result.riskScore;
+    checks.push(...result.checks.map((check) => ({
+      ...check,
+      sourceName: `Attachment ${index + 1}: ${attachment.name}`,
+    })));
+  }
+
   return { checks, riskScore };
 }
 

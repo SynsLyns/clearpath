@@ -212,7 +212,7 @@ export function AttachmentUploader({
         />
         <FilePlus2 size={19} />
         <span><strong>Choose files</strong> or drag and drop</span>
-        <small>Any format · up to 100 MB each · no executables</small>
+        <small>PDF, JPEG, PNG, WebP, and TIFF text extraction up to 8 MB · any format up to 100 MB · no executables</small>
       </label>
       {items.length > 0 && (
         <ul className="attachment-list">

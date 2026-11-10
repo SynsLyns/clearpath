@@ -635,6 +635,13 @@ kbd { padding: 1px 3px; color: #64756a; border: 1px solid #dce4dd; border-radius
 .attachment-preview-meta strong { color: #4a594f; font-size: 9px; overflow-wrap: anywhere; }
 .attachment-preview-meta small { color: #87938a; font-size: 8px; overflow-wrap: anywhere; }
 .attachment-review-note { margin-top: 10px; }
+.extraction-status { color: #647d6c !important; }
+.extraction-error, .record-extraction-error { margin: 0; color: #8a642d; font-size: 9px; line-height: 1.5; }
+.extracted-text { border: 1px solid #e8eee8; border-radius: 6px; background: #fff; }
+.extracted-text summary { padding: 7px 9px; color: #417b5d; font-size: 9px; cursor: pointer; }
+.extracted-text pre, .record-extracted-text { max-height: 300px; margin: 0; padding: 9px; overflow: auto; color: #536258; border-top: 1px solid #e8eee8; background: #fff; font: inherit; font-size: 9px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rule-source { display: block; margin-top: 3px; color: #697a6e; font-size: 8px; }
+.record-extracted-text { max-height: none; flex: 1 0 100%; }
 .attachment-count-tag { display: inline-flex; align-items: center; padding: 3px 6px; color: #65796a; border: 1px solid #dfe8df; border-radius: 99px; background: #f7faf7; font-size: 8px; font-weight: 600; }
 .metric-purple .metric-icon { color: #776397; background: #f3eff8; }
 .partner-scorecard { margin-top: 14px; padding-bottom: 0; }

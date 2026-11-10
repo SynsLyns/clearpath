@@ -3,8 +3,10 @@ import type { AttachmentRecord } from "@/lib/repository";
 
 export function AttachmentPreviews({
   attachments,
+  showExtractedText = false,
 }: {
   attachments: readonly AttachmentRecord[];
+  showExtractedText?: boolean;
 }) {
   if (!attachments.length) return null;
 
@@ -51,13 +53,44 @@ export function AttachmentPreviews({
                       .filter(Boolean)
                       .join(" · ")}
               </small>
+              {showExtractedText && attachment.kind === "file" && (
+                <small className="extraction-status">
+                  Text extraction: {formatExtractionStatus(attachment.extractionStatus)}
+                  {attachment.extractionMethod && ` · ${attachment.extractionMethod}`}
+                </small>
+              )}
             </div>
+            {showExtractedText && attachment.extractionError && (
+              <p className="extraction-error">{attachment.extractionError}</p>
+            )}
+            {showExtractedText && attachment.extractedText && (
+              <details className="extracted-text">
+                <summary>View extracted text</summary>
+                <pre>{attachment.extractedText}</pre>
+              </details>
+            )}
           </article>
         ))}
       </div>
-      <p className="attachment-review-note">Attachments are not processed automatically and require manual review.</p>
+      <p className="attachment-review-note">
+        Supported PDFs and images are screened automatically, subject to processing limits; other files may not be. Extraction can miss content or visual context, so every attachment still requires manual review.
+      </p>
     </section>
   );
+}
+
+function formatExtractionStatus(status: string) {
+  const labels: Record<string, string> = {
+    not_processed: "Not processed",
+    not_applicable: "Not applicable",
+    extracted: "Complete",
+    partial: "Partial",
+    no_text: "No readable text",
+    unsupported: "Unsupported file type",
+    limit_exceeded: "Processing limit reached",
+    failed: "Failed",
+  };
+  return labels[status] ?? "Unknown";
 }
 
 function formatBytes(bytes: number | null) {

@@ -118,7 +118,7 @@ export function UpdateSubmissionForm({
       {state.error && <p className="form-error" role="alert"><AlertCircle size={16} />{state.error}</p>}
       {attachmentNames.length > 0 && (
         <p className="attachment-self-check-note">
-          Attachments can’t be auto-checked yet. This submission will go to manual review.
+          Supported PDFs and images are screened for text after submission. Extraction may miss content, and every attachment still requires manual review.
         </p>
       )}
       <p className="form-privacy">Saving creates a new version. Previous versions and compliance decisions stay in the audit history.</p>

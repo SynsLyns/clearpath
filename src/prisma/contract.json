@@ -52,6 +52,44 @@
                   }
                 }
               },
+              "extractedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-date@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 3
+                  }
+                }
+              },
+              "extractedText": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "extractionError": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "extractionMethod": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "extractionStatus": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "id": {
                 "nullable": false,
                 "type": {
@@ -120,6 +158,21 @@
                 },
                 "createdAt": {
                   "column": "createdAt"
+                },
+                "extractedAt": {
+                  "column": "extractedAt"
+                },
+                "extractedText": {
+                  "column": "extractedText"
+                },
+                "extractionError": {
+                  "column": "extractionError"
+                },
+                "extractionMethod": {
+                  "column": "extractionMethod"
+                },
+                "extractionStatus": {
+                  "column": "extractionStatus"
                 },
                 "id": {
                   "column": "id"
@@ -492,6 +545,13 @@
                   "kind": "scalar"
                 }
               },
+              "sourceName": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "submissionId": {
                 "nullable": false,
                 "type": {
@@ -549,6 +609,9 @@
                 },
                 "snippet": {
                   "column": "snippet"
+                },
+                "sourceName": {
+                  "column": "sourceName"
                 },
                 "submissionId": {
                   "column": "submissionId"
@@ -821,6 +884,38 @@
                   "typeParams": {
                     "precision": 3
                   }
+                },
+                "extractedAt": {
+                  "codecId": "pg/timestamptz-date@1",
+                  "dataType": "pg/timestamptz",
+                  "nullable": true,
+                  "typeParams": {
+                    "precision": 3
+                  }
+                },
+                "extractedText": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "extractionError": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "extractionMethod": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "extractionStatus": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "default": {
+                    "kind": "literal",
+                    "value": "not_processed"
+                  },
+                  "nullable": false
                 },
                 "id": {
                   "codecId": "pg/text@1",
@@ -1201,6 +1296,11 @@
                   "dataType": "pg/text",
                   "nullable": false
                 },
+                "sourceName": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
                 "submissionId": {
                   "codecId": "pg/text@1",
                   "dataType": "pg/text",
@@ -1391,7 +1491,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "883c7cbe51244e07cb3a75a5eaa3d0ae60a437505bb801cc1e9a8d99e0494774"
+    "storageHash": "ba32bfcc9a08fd2c17db669291faa8aec9b5ad2fcf9f59a95af16cd4d389a608"
   },
   "execution": {
     "executionHash": "867ce53a610d4ee8fae50ec3a568e545bd8e962b6f3c26d648accae623d62fcd",

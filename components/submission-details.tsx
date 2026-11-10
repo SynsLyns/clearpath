@@ -150,6 +150,7 @@ export function FlagRows({
             </div>
             <div className="flag-message">
               <p>{check.message}</p>
+              {check.sourceName && <small className="rule-source">Detected in {check.sourceName}</small>}
               <RuleAuthorityTag authority={check.authority ?? getRuleAuthority(check.ruleId)} />
               <a className="rule-why-link" href={`/rules#rule-${check.ruleId}`} target="_blank" rel="noopener noreferrer">Why?</a>
             </div>

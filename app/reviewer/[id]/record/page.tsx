@@ -110,12 +110,13 @@ export default async function ComplianceRecordPage({
             {failedChecks.length ? (
               <div className="table-scroll">
                 <table className="record-table">
-                  <thead><tr><th>Version</th><th>Rule</th><th>Severity</th><th>Authority</th><th>Snippet</th><th>Dismissal</th></tr></thead>
+                  <thead><tr><th>Version</th><th>Rule</th><th>Source</th><th>Severity</th><th>Authority</th><th>Snippet</th><th>Dismissal</th></tr></thead>
                   <tbody>
                     {failedChecks.map((check) => (
                       <tr key={check.id}>
                         <td>v{versionById.get(check.submissionId)}</td>
                         <td>{check.ruleId}<small>{check.message}</small></td>
+                        <td>{check.sourceName ?? "Not recorded"}</td>
                         <td>{titleCase(check.severity)}</td>
                         <td>{check.authority ?? "Not recorded"}</td>
                         <td>{check.snippet}</td>
@@ -176,11 +177,21 @@ export default async function ComplianceRecordPage({
                     <div>
                       <strong>{attachment.name}</strong>
                       <span>v{versionById.get(attachment.submissionId)} · {attachment.contentType ?? attachment.kind} · {sizeLabel(attachment.sizeBytes)}</span>
+                      {attachment.kind === "file" && (
+                        <span>
+                          Text extraction: {formatExtractionStatus(attachment.extractionStatus)}
+                          {attachment.extractionMethod ? ` · ${attachment.extractionMethod}` : ""}
+                        </span>
+                      )}
                     </div>
                     {attachment.kind === "file" ? (
                       <a href={`/api/attachments/${attachment.id}`}>Open through ClearPath</a>
                     ) : (
                       <Link href={`/reviewer/${attachment.submissionId}?from=all`}>View link on submission</Link>
+                    )}
+                    {attachment.extractionError && <p className="record-extraction-error">{attachment.extractionError}</p>}
+                    {attachment.extractedText && (
+                      <pre className="record-extracted-text">{attachment.extractedText}</pre>
                     )}
                   </li>
                 ))}
@@ -194,4 +205,18 @@ export default async function ComplianceRecordPage({
       <PageFooter />
     </>
   );
+}
+
+function formatExtractionStatus(status: string) {
+  const labels: Record<string, string> = {
+    not_processed: "Not processed",
+    not_applicable: "Not applicable",
+    extracted: "Complete",
+    partial: "Partial",
+    no_text: "No readable text",
+    unsupported: "Unsupported file type",
+    limit_exceeded: "Processing limit reached",
+    failed: "Failed",
+  };
+  return labels[status] ?? "Unknown";
 }

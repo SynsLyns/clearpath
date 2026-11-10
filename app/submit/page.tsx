@@ -21,3 +21,5 @@ export default async function SubmitPage() {
     </>
   );
 }
+
+export const maxDuration = 300;

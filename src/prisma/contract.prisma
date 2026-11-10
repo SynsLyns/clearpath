@@ -37,6 +37,7 @@ model RuleCheck {
   dismissed    Boolean    @default(false)
   dismissedBy  String?
   dismissNote  String?
+  sourceName   String?
   submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 
   @@index([submissionId])
@@ -50,8 +51,13 @@ model Attachment {
   url          String
   contentType  String?
   sizeBytes    Int?
-  createdAt    DateTime   @default(now()) @onCreate(now())
-  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  extractionStatus String     @default("not_processed")
+  extractedText    String?
+  extractionError  String?
+  extractionMethod String?
+  extractedAt      DateTime?
+  createdAt        DateTime   @default(now()) @onCreate(now())
+  submission       Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 
   @@index([submissionId, createdAt])
 }

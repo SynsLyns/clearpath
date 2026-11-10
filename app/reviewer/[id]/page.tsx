@@ -124,7 +124,7 @@ export default async function ReviewerDetailPage({
               <div className="creative-meta"><span>Submitted by {submission.submittedBy}</span><RiskBadge checks={bundle.checks} riskScore={submission.riskScore} /></div>
             </section>
 
-            <AttachmentPreviews attachments={bundle.attachments} />
+            <AttachmentPreviews attachments={bundle.attachments} showExtractedText />
 
             <section className="content-card">
               <div className="content-card-heading">
@@ -193,18 +193,23 @@ function ChangeSummary({
   prior: Awaited<ReturnType<typeof getRuleChecks>>;
   current: Awaited<ReturnType<typeof getRuleChecks>>;
 }) {
-  const priorById = new Map(prior.map((check) => [check.ruleId, check]));
-  const currentById = new Map(current.map((check) => [check.ruleId, check]));
+  const checkKey = (check: (typeof prior)[number]) =>
+    `${check.ruleId}\u0000${check.sourceName ?? ""}`;
+  const priorById = new Map(prior.map((check) => [checkKey(check), check]));
+  const currentById = new Map(current.map((check) => [checkKey(check), check]));
   const resolved: string[] = [];
   const stillFailing: string[] = [];
   const newlyFailing: string[] = [];
 
-  for (const [ruleId, check] of currentById) {
-    const wasFailed = priorById.get(ruleId)?.passed === false;
+  for (const [key, check] of currentById) {
+    const wasFailed = priorById.get(key)?.passed === false;
     const isFailed = !check.passed;
-    if (wasFailed && !isFailed) resolved.push(ruleId);
-    else if (wasFailed && isFailed) stillFailing.push(ruleId);
-    else if (!wasFailed && isFailed) newlyFailing.push(ruleId);
+    const label = check.sourceName
+      ? `${check.ruleId} (${check.sourceName})`
+      : check.ruleId;
+    if (wasFailed && !isFailed) resolved.push(label);
+    else if (wasFailed && isFailed) stillFailing.push(label);
+    else if (!wasFailed && isFailed) newlyFailing.push(label);
   }
 
   const groups = [

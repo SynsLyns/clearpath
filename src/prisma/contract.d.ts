@@ -23,7 +23,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'883c7cbe51244e07cb3a75a5eaa3d0ae60a437505bb801cc1e9a8d99e0494774'>;
+  StorageHashBase<'ba32bfcc9a08fd2c17db669291faa8aec9b5ad2fcf9f59a95af16cd4d389a608'>;
 export type ExecutionHash =
   ExecutionHashBase<'867ce53a610d4ee8fae50ec3a568e545bd8e962b6f3c26d648accae623d62fcd'>;
 export type ProfileHash =
@@ -312,6 +312,11 @@ export namespace Models {
   export type public_Attachment = {
     contentType: FieldOutputTypes['public']['Attachment']['contentType'];
     createdAt: FieldOutputTypes['public']['Attachment']['createdAt'];
+    extractedAt: FieldOutputTypes['public']['Attachment']['extractedAt'];
+    extractedText: FieldOutputTypes['public']['Attachment']['extractedText'];
+    extractionError: FieldOutputTypes['public']['Attachment']['extractionError'];
+    extractionMethod: FieldOutputTypes['public']['Attachment']['extractionMethod'];
+    extractionStatus: FieldOutputTypes['public']['Attachment']['extractionStatus'];
     id: FieldOutputTypes['public']['Attachment']['id'];
     kind: FieldOutputTypes['public']['Attachment']['kind'];
     name: FieldOutputTypes['public']['Attachment']['name'];
@@ -363,6 +368,7 @@ export namespace Models {
     ruleId: FieldOutputTypes['public']['RuleCheck']['ruleId'];
     severity: FieldOutputTypes['public']['RuleCheck']['severity'];
     snippet: FieldOutputTypes['public']['RuleCheck']['snippet'];
+    sourceName: FieldOutputTypes['public']['RuleCheck']['sourceName'];
     submissionId: FieldOutputTypes['public']['RuleCheck']['submissionId'];
     submission: public_Submission;
     readonly [RelationKeys]?: 'submission';
@@ -435,6 +441,41 @@ type ContractBase = Omit<
                   readonly nullable: false;
                   readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
                   readonly typeParams: { readonly precision: 3 };
+                  readonly many: false;
+                };
+                readonly extractedAt: {
+                  readonly dataType: 'pg/timestamptz';
+                  readonly codecId: 'pg/timestamptz-date@1';
+                  readonly nullable: true;
+                  readonly typeParams: { readonly precision: 3 };
+                  readonly many: false;
+                };
+                readonly extractedText: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
+                readonly extractionError: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
+                readonly extractionMethod: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
+                readonly extractionStatus: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'not_processed'>;
+                  };
                   readonly many: false;
                 };
                 readonly id: {
@@ -780,6 +821,12 @@ type ContractBase = Omit<
                   readonly nullable: false;
                   readonly many: false;
                 };
+                readonly sourceName: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
                 readonly submissionId: {
                   readonly dataType: 'pg/text';
                   readonly codecId: 'pg/text@1';
@@ -987,6 +1034,30 @@ type ContractBase = Omit<
                   readonly typeParams: { readonly precision: 3 };
                 };
               };
+              readonly extractedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-date@1';
+                  readonly typeParams: { readonly precision: 3 };
+                };
+              };
+              readonly extractedText: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly extractionError: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly extractionMethod: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly extractionStatus: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly id: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
@@ -1032,6 +1103,11 @@ type ContractBase = Omit<
               readonly fields: {
                 readonly contentType: { readonly column: 'contentType' };
                 readonly createdAt: { readonly column: 'createdAt' };
+                readonly extractedAt: { readonly column: 'extractedAt' };
+                readonly extractedText: { readonly column: 'extractedText' };
+                readonly extractionError: { readonly column: 'extractionError' };
+                readonly extractionMethod: { readonly column: 'extractionMethod' };
+                readonly extractionStatus: { readonly column: 'extractionStatus' };
                 readonly id: { readonly column: 'id' };
                 readonly kind: { readonly column: 'kind' };
                 readonly name: { readonly column: 'name' };
@@ -1254,6 +1330,10 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly sourceName: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly submissionId: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
@@ -1287,6 +1367,7 @@ type ContractBase = Omit<
                 readonly ruleId: { readonly column: 'ruleId' };
                 readonly severity: { readonly column: 'severity' };
                 readonly snippet: { readonly column: 'snippet' };
+                readonly sourceName: { readonly column: 'sourceName' };
                 readonly submissionId: { readonly column: 'submissionId' };
               };
             };

@@ -165,7 +165,7 @@ export function SubmissionForm() {
           )}
           {attachmentNames.length > 0 && (
             <p className="attachment-self-check-note">
-              Attachments can’t be auto-checked yet. This submission will go to manual review.
+              Supported PDFs and images are screened for text after submission. Extraction may miss content, and every attachment still requires manual review.
             </p>
           )}
         </div>

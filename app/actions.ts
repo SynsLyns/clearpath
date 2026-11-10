@@ -15,9 +15,10 @@ import {
   type ReasonCode,
 } from "@/lib/constants";
 import { parseAttachmentPayload } from "@/lib/attachments";
+import { extractAttachments } from "@/lib/attachment-extraction";
 import { assertRole } from "@/lib/session";
 import { db } from "@/src/prisma/db";
-import { runRules, type RuleResult } from "@/lib/rules";
+import { runSubmissionRules, type RuleResult } from "@/lib/rules";
 import {
   buildExport,
   EXPORT_KINDS,
@@ -149,20 +150,28 @@ async function writeChecks(
       message: check.message,
       authority: check.authority,
       snippet: check.snippet,
+      sourceName: check.sourceName ?? null,
     });
   }
 }
 
+type AttachmentForSubmission = {
+  kind: string;
+  name: string;
+  url: string;
+  contentType: string | null;
+  sizeBytes: number | null;
+  extractionStatus: string;
+  extractedText: string | null;
+  extractionError: string | null;
+  extractionMethod: string | null;
+  extractedAt: Date | null;
+};
+
 async function writeAttachments(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   submissionId: string,
-  attachments: readonly {
-    kind: string;
-    name: string;
-    url: string;
-    contentType: string | null;
-    sizeBytes: number | null;
-  }[],
+  attachments: readonly AttachmentForSubmission[],
 ) {
   for (const attachment of attachments) {
     await tx.orm.public.Attachment.create({
@@ -172,6 +181,11 @@ async function writeAttachments(
       url: attachment.url,
       contentType: attachment.contentType,
       sizeBytes: attachment.sizeBytes,
+      extractionStatus: attachment.extractionStatus,
+      extractedText: attachment.extractedText,
+      extractionError: attachment.extractionError,
+      extractionMethod: attachment.extractionMethod,
+      extractedAt: attachment.extractedAt,
     });
   }
 }
@@ -189,18 +203,19 @@ export async function createSubmission(
 
   if (!partner) return { error: "Enter the partner or campaign name." };
   if (!parsedAttachments.ok) return { error: parsedAttachments.error };
-  const attachments = parsedAttachments.attachments;
+  const uploadedAttachments = parsedAttachments.attachments;
   if (!PRODUCTS.includes(product as Product)) {
     return { error: "Choose a valid financial product." };
   }
   if (!CHANNELS.includes(channel as Channel)) {
     return { error: "Choose a valid marketing channel." };
   }
-  if (creativeText.length < 20 && attachments.length === 0) {
+  if (creativeText.length < 20 && uploadedAttachments.length === 0) {
     return { error: "Creative must be at least 20 characters." };
   }
 
-  const result = runRules(
+  const attachments = await extractAttachments(uploadedAttachments);
+  const result = runSubmissionRules(
     creativeText,
     product as Product,
     channel as Channel,
@@ -440,6 +455,7 @@ export async function updateSubmission(
   if (!CHANNELS.includes(channel as Channel)) {
     return { error: "Choose a valid marketing channel." };
   }
+  const extractedNewAttachments = await extractAttachments(newAttachments);
   try {
     await db.transaction(async (tx) => {
       const currentRecords = await tx.orm.public.Submission.all();
@@ -489,9 +505,9 @@ export async function updateSubmission(
       }
       const attachments = [
         ...parentAttachments,
-        ...newAttachments,
+        ...extractedNewAttachments,
       ];
-      const result = runRules(
+      const result = runSubmissionRules(
         creativeText,
         product as Product,
         channel as Channel,
