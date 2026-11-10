@@ -21,7 +21,7 @@ export function formatUtc(value: Date | string | null | undefined): string {
 export function truncateCreativeText(value: string): string {
   const maxLength = 32_000;
   if (value.length <= maxLength) return value;
-  return `${value.slice(0, maxLength - CREATIVE_TRUNCATION.length)}${CREATIVE_TRUNCATION}`;
+  return `${value.slice(0, maxLength)}${CREATIVE_TRUNCATION}`;
 }
 
 function cellValue(value: unknown, type: CsvColumn["type"]): string {

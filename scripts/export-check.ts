@@ -32,7 +32,7 @@ assert.equal(
   "\uFEFFid\r\n",
 );
 assert.ok(toCsv([{ key: "value", header: "value" }], [{ value: "café — déjà vu" }]).includes("café — déjà vu"));
-assert.equal(truncateCreativeText("a".repeat(40_000)).length, 32_000);
+assert.equal(truncateCreativeText("a".repeat(40_000)).length, 32_000 + " [truncated]".length);
 assert.ok(truncateCreativeText("a".repeat(40_000)).endsWith(" [truncated]"));
 assert.equal(
   toCsv([{ key: "a", header: "a" }, { key: "b", header: "b" }], [
