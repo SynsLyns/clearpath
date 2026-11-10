@@ -705,3 +705,104 @@ kbd { padding: 1px 3px; color: #64756a; border: 1px solid #dce4dd; border-radius
   .rule-example-grid { grid-template-columns: 1fr; }
   .page-footer { flex-wrap: wrap; }
 }
+
+.reviewer-detail-actions { display: flex; align-items: center; gap: 8px; }
+.export-filter-card { margin-bottom: 15px; padding: 17px; }
+.export-filter-card .content-card-heading > span { color: #78857c; font-size: 9px; }
+.export-filter-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 11px; }
+.export-filter-form > label { display: grid; min-width: 0; gap: 5px; }
+.export-filter-form > label > span { color: #68766d; font-size: 9px; font-weight: 650; }
+.export-filter-form input:not([type="checkbox"]), .export-filter-form select { width: 100%; min-width: 0; min-height: 36px; padding: 7px 9px; color: #405047; border: 1px solid #e0e7e1; border-radius: 7px; background: #fff; font-size: 10px; }
+.export-filter-wide { grid-column: span 2; }
+.export-checkbox { display: flex !important; min-height: 36px; align-items: center; gap: 8px !important; }
+.export-checkbox input { width: 15px; height: 15px; accent-color: #17624e; }
+.export-checkbox span { color: #59675e; font-size: 9px; }
+.export-filter-actions { display: flex; align-items: center; gap: 7px; }
+.export-filter-actions .button { min-height: 36px; font-size: 9px; }
+.export-filter-error { margin: 12px 0 0; color: #a3403b; font-size: 10px; }
+.export-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.export-card { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-content: start; gap: 9px 11px; padding: 16px; }
+.export-card-icon { display: grid; width: 34px; height: 34px; color: #28775a; border-radius: 10px; background: #edf6ef; place-items: center; }
+.export-card-copy h2 { margin: 1px 0 3px; color: #35433b; font-size: 12px; font-weight: 700; }
+.export-card-copy p { margin: 0; color: #7a867e; font-size: 9px; line-height: 1.5; }
+.export-row-count, .export-card > small, .export-empty-note, .export-button-wrap { grid-column: 2; }
+.export-row-count { color: #435248; font-size: 10px; }
+.export-card > small { color: #818d84; font-size: 8px; }
+.export-empty-note { color: #8a948d; font-size: 9px; }
+.export-button-wrap { display: grid; justify-items: start; gap: 5px; }
+.export-button-wrap .button { min-height: 34px; padding: 0 11px; font-size: 9px; }
+.export-message { margin: 0; color: #397454; font-size: 9px; }
+.export-message-error { color: #a3403b; }
+.export-history { margin-bottom: 20px; }
+.export-log-kind { display: inline-flex; align-items: center; gap: 5px; }
+.export-log-filters { max-width: 370px; color: #748178 !important; }
+.export-history-empty { padding: 24px; }
+.record-top-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.record-top-actions .back-link { margin: 0; }
+.record-header { padding-bottom: 14px; border-bottom: 1px solid #e7ece7; }
+.record-brand { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; color: #35433b; }
+.record-brand-mark { display: grid; width: 28px; height: 28px; color: white; border-radius: 8px; background: #17624e; font-size: 14px; font-weight: 750; place-items: center; }
+.record-brand strong { font-size: 15px; }
+.record-brand > span:last-child { margin-left: 5px; color: #7c8980; font-size: 10px; }
+.record-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 5px 16px; margin-bottom: 14px; color: #758179; font-size: 9px; }
+.record-header .page-heading { margin: 0; }
+.compliance-record { padding: 22px; border: 1px solid #e5eae6; border-radius: 13px; background: #fff; }
+.record-section { margin-top: 18px; break-inside: avoid-page; }
+.record-section h2 { display: flex; align-items: center; gap: 6px; margin: 0 0 9px; padding-bottom: 7px; color: #35433b; border-bottom: 1px solid #edf0ed; font-size: 12px; }
+.record-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0 0 10px; }
+.record-facts > div { display: grid; gap: 2px; min-width: 0; }
+.record-facts dt { color: #829087; font-size: 8px; text-transform: uppercase; }
+.record-facts dd { margin: 0; color: #48574e; font-size: 9px; overflow-wrap: anywhere; }
+.record-version-list, .record-audit-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.record-version-list li { display: grid; grid-template-columns: 42px minmax(0, 1.2fr) 100px minmax(140px, .8fr); gap: 8px; padding: 7px 8px; color: #69766d; border: 1px solid #edf0ed; border-radius: 6px; font-size: 8px; overflow-wrap: anywhere; }
+.record-version-list a, .record-attachment-list a { color: #28775a; text-decoration: underline; text-underline-offset: 2px; }
+.record-creative { padding: 11px; color: #4a594f; border: 1px solid #edf0ed; border-radius: 7px; background: #fbfcfb; font-size: 9px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.record-table { width: 100%; border-collapse: collapse; text-align: left; }
+.record-table th, .record-table td { padding: 7px 8px; color: #5e6b62; border-bottom: 1px solid #edf0ed; font-size: 8px; vertical-align: top; overflow-wrap: anywhere; }
+.record-table th { color: #748178; background: #fbfcfb; font-size: 7px; font-weight: 700; text-transform: uppercase; }
+.record-table td small { display: block; margin-top: 3px; color: #818d84; font-size: 7px; }
+.record-empty { margin: 0; color: #818d84; font-size: 9px; }
+.record-audit-list li { display: grid; grid-template-columns: 130px 110px 150px minmax(0, 1fr); gap: 8px; padding: 7px 8px; border: 1px solid #edf0ed; border-radius: 6px; color: #69766d; font-size: 8px; break-inside: avoid; }
+.record-audit-list time { color: #78857c; }
+.record-audit-list strong { color: #48574e; }
+.record-audit-list p { grid-column: 2 / -1; margin: 0; overflow-wrap: anywhere; }
+.record-attachment-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.record-attachment-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px; border: 1px solid #edf0ed; border-radius: 6px; font-size: 8px; break-inside: avoid; }
+.record-attachment-list li > div { display: grid; gap: 2px; min-width: 0; }
+.record-attachment-list strong { color: #48574e; overflow-wrap: anywhere; }
+.record-attachment-list span { color: #818d84; }
+.record-footer { margin-top: 20px; padding-top: 10px; color: #69766d; border-top: 1px solid #e7ece7; font-size: 9px; }
+
+@media (max-width: 700px) {
+  .export-filter-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .export-filter-wide { grid-column: span 2; }
+  .export-filter-actions { grid-column: span 2; }
+  .export-grid { grid-template-columns: 1fr; }
+  .record-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .record-version-list li { grid-template-columns: 35px minmax(0, 1fr); }
+  .record-version-list li > :nth-child(n + 3) { grid-column: 2; }
+  .record-audit-list li { grid-template-columns: 1fr; gap: 3px; }
+  .record-audit-list p { grid-column: 1; }
+  .reviewer-detail-actions { flex-wrap: wrap; justify-content: flex-end; }
+}
+
+@media print {
+  @page { margin: 16mm 13mm; }
+  html, body { min-height: 0; color: #000; background: #fff !important; font-size: 10pt; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .app-header, .page-footer, .no-print, .reviewer-detail-actions { display: none !important; }
+  .page-container { width: 100%; max-width: none; margin: 0; padding: 0; }
+  .compliance-record { padding: 0; border: 0; border-radius: 0; box-shadow: none; }
+  .record-section { break-inside: auto; }
+  .record-section h2, .record-table tr, .record-version-list li, .record-audit-list li, .record-attachment-list li { break-inside: avoid; }
+  .table-scroll { overflow: visible; }
+  .record-table { min-width: 0; }
+  .record-table th, .record-table td { color: #000; }
+  .record-table thead { display: table-header-group; }
+  .record-brand, .record-meta, .record-section h2, .record-facts dd, .record-version-list li, .record-audit-list li, .record-attachment-list li { color: #000; }
+  .record-brand-mark { color: #000; border: 1px solid #000; background: #fff; }
+  .record-creative { color: #000; border-color: #aaa; background: #fff; }
+  .record-version-list li, .record-audit-list li, .record-attachment-list li { border-color: #aaa; }
+  .record-version-list a, .record-attachment-list a { color: #000; text-decoration: none; }
+  .record-footer { color: #000; }
+}

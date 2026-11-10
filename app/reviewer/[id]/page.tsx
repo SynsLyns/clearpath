@@ -87,7 +87,14 @@ export default async function ReviewerDetailPage({
           eyebrow={`Compliance review · v${submission.version}`}
           title={submission.partner}
           description={`${titleCase(submission.product)} · ${titleCase(submission.channel)} · Submitted ${formatDate(submission.createdAt)}`}
-          action={<StatusBadge status={submission.status} />}
+          action={
+            <div className="reviewer-detail-actions">
+              <StatusBadge status={submission.status} />
+              <Link className="button button-outline" href={`/reviewer/${submission.id}/record`}>
+                <FileText size={14} /> Compliance record
+              </Link>
+            </div>
+          }
         />
         <div className="reviewer-workspace">
           <div className="reviewer-main">
