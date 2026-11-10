@@ -23,9 +23,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'07235bc8fd86185fe85716738033bc79e15e5b8cea3eaa2e13edd08c59ccef0a'>;
+  StorageHashBase<'883c7cbe51244e07cb3a75a5eaa3d0ae60a437505bb801cc1e9a8d99e0494774'>;
 export type ExecutionHash =
-  ExecutionHashBase<'a4c2ece0b8806decb9593519012bad93b26e7d731a2b3d3ad9f66e4bf77dc136'>;
+  ExecutionHashBase<'867ce53a610d4ee8fae50ec3a568e545bd8e962b6f3c26d648accae623d62fcd'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -331,6 +331,15 @@ export namespace Models {
     submission: public_Submission;
     readonly [RelationKeys]?: 'submission';
   };
+  export type public_ExportLog = {
+    actor: FieldOutputTypes['public']['ExportLog']['actor'];
+    createdAt: FieldOutputTypes['public']['ExportLog']['createdAt'];
+    filters: FieldOutputTypes['public']['ExportLog']['filters'];
+    id: FieldOutputTypes['public']['ExportLog']['id'];
+    kind: FieldOutputTypes['public']['ExportLog']['kind'];
+    rowCount: FieldOutputTypes['public']['ExportLog']['rowCount'];
+    readonly [RelationKeys]?: never;
+  };
   export type public_Review = {
     comment: FieldOutputTypes['public']['Review']['comment'];
     createdAt: FieldOutputTypes['public']['Review']['createdAt'];
@@ -387,6 +396,7 @@ export declare const models: {
   public: {
     Attachment: Models.public_Attachment;
     AuditEvent: Models.public_AuditEvent;
+    ExportLog: Models.public_ExportLog;
     Review: Models.public_Review;
     RuleCheck: Models.public_RuleCheck;
     Submission: Models.public_Submission;
@@ -566,6 +576,59 @@ type ContractBase = Omit<
                   };
                 },
               ];
+            };
+            readonly ExportLog: {
+              columns: {
+                readonly actor: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly createdAt: {
+                  readonly dataType: 'pg/timestamptz';
+                  readonly codecId: 'pg/timestamptz-date@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                  readonly typeParams: { readonly precision: 3 };
+                  readonly many: false;
+                };
+                readonly filters: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly id: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly kind: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly rowCount: {
+                  readonly dataType: 'pg/int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'ExportLog_createdAt_idx_9575dbd7';
+                  readonly prefix: 'ExportLog_createdAt_idx';
+                  readonly columns: readonly ['createdAt'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [];
             };
             readonly Review: {
               columns: {
@@ -898,6 +961,7 @@ type ContractBase = Omit<
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'AuditEvent';
     };
+    readonly ExportLog: { readonly namespace: 'public' & NamespaceId; readonly model: 'ExportLog' };
     readonly Review: { readonly namespace: 'public' & NamespaceId; readonly model: 'Review' };
     readonly RuleCheck: { readonly namespace: 'public' & NamespaceId; readonly model: 'RuleCheck' };
     readonly Submission: {
@@ -1032,6 +1096,51 @@ type ContractBase = Omit<
                 readonly detail: { readonly column: 'detail' };
                 readonly id: { readonly column: 'id' };
                 readonly submissionId: { readonly column: 'submissionId' };
+              };
+            };
+          };
+          readonly ExportLog: {
+            readonly fields: {
+              readonly actor: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-date@1';
+                  readonly typeParams: { readonly precision: 3 };
+                };
+              };
+              readonly filters: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly kind: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly rowCount: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+            };
+            readonly relations: Record<string, never>;
+            readonly storage: {
+              readonly table: 'ExportLog';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly actor: { readonly column: 'actor' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly filters: { readonly column: 'filters' };
+                readonly id: { readonly column: 'id' };
+                readonly kind: { readonly column: 'kind' };
+                readonly rowCount: { readonly column: 'rowCount' };
               };
             };
           };
@@ -1403,6 +1512,26 @@ type ContractBase = Omit<
           readonly onCreate: { readonly id: 'uuidv4'; readonly kind: 'generator' };
           readonly ref: {
             readonly entry: 'AuditEvent';
+            readonly field: 'id';
+            readonly namespace: 'public';
+          };
+        },
+        {
+          readonly onCreate: {
+            readonly id: 'timestampNow';
+            readonly kind: 'generator';
+            readonly params: { readonly precision: 3 };
+          };
+          readonly ref: {
+            readonly entry: 'ExportLog';
+            readonly field: 'createdAt';
+            readonly namespace: 'public';
+          };
+        },
+        {
+          readonly onCreate: { readonly id: 'uuidv4'; readonly kind: 'generator' };
+          readonly ref: {
+            readonly entry: 'ExportLog';
             readonly field: 'id';
             readonly namespace: 'public';
           };

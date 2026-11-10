@@ -81,3 +81,14 @@ model AuditEvent {
 
   @@index([submissionId, createdAt])
 }
+
+model ExportLog {
+  id        String   @id @onCreate(uuid())
+  actor     String
+  kind      String
+  filters   String
+  rowCount  Int
+  createdAt DateTime @default(now()) @onCreate(now())
+
+  @@index([createdAt])
+}
