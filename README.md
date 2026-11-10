@@ -74,7 +74,7 @@ Authentication is intentionally stubbed. The role picker writes an HTTP-only rol
 - The rules are deliberately a small first-pass screen, not a legal interpretation or a replacement for reviewer judgment.
 - The displayed ClearPath NMLS ID (`12345678`) is fictional and exists only for the one-click disclosure helper.
 - Attachments are stored in private Vercel Blob and routed to manual review. Authenticated file delivery checks the request role and submission ownership, then redirects to a five-minute, file-scoped signed Blob URL so file bytes are delivered by Blob rather than proxied through the app. Production should replace demo role cookies with real authentication and add malware scanning.
-- PDF and image text extraction runs locally in the server process. Extracted text is retained with the attachment for reviewer use and is not included in CSV exports; request archiving retains it with the rest of the audit record.
+- PDF and image text extraction runs locally after the submission response, so submitters do not wait for OCR. Reviewers see a processing status that refreshes until results are ready; decisions are blocked while an attachment is processing. The work uses Next.js `after()` within the Vercel function's configured maximum duration, not a durable external queue. Extracted text is retained with the attachment for reviewer use and is not included in CSV exports; request archiving retains it with the rest of the audit record.
 - Seed timestamps are relative to the current time so the queue and “waiting” indicators remain useful during a demo.
 
 ## Product decisions

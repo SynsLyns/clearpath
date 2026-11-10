@@ -211,6 +211,7 @@ function formatExtractionStatus(status: string) {
   const labels: Record<string, string> = {
     not_processed: "Not processed",
     not_applicable: "Not applicable",
+    processing: "Processing",
     extracted: "Complete",
     partial: "Partial",
     no_text: "No readable text",

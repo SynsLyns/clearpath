@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import {
   CHANNELS,
   PRODUCTS,
@@ -14,8 +15,8 @@ import {
   type Product,
   type ReasonCode,
 } from "@/lib/constants";
-import { parseAttachmentPayload } from "@/lib/attachments";
-import { extractAttachments } from "@/lib/attachment-extraction";
+import { parseAttachmentPayload, type AttachmentInput } from "@/lib/attachments";
+import { processAttachmentExtractions } from "@/lib/process-attachment-extractions";
 import { assertRole } from "@/lib/session";
 import { db } from "@/src/prisma/db";
 import { runSubmissionRules, type RuleResult } from "@/lib/rules";
@@ -190,6 +191,18 @@ async function writeAttachments(
   }
 }
 
+function queueAttachments(attachments: readonly AttachmentInput[]) {
+  return attachments.map((attachment) => ({
+    ...attachment,
+    extractionStatus:
+      attachment.kind === "file" ? "processing" : "not_applicable",
+    extractedText: null,
+    extractionError: null,
+    extractionMethod: null,
+    extractedAt: null,
+  }));
+}
+
 export async function createSubmission(
   _previousState: ActionState,
   formData: FormData,
@@ -214,7 +227,7 @@ export async function createSubmission(
     return { error: "Creative must be at least 20 characters." };
   }
 
-  const attachments = await extractAttachments(uploadedAttachments);
+  const attachments = queueAttachments(uploadedAttachments);
   const result = runSubmissionRules(
     creativeText,
     product as Product,
@@ -224,7 +237,7 @@ export async function createSubmission(
   const { failures, detail } = summarizeFlags(result.checks);
   const routing = initialRoute(failures, attachments.length > 0);
 
-  await db.transaction(async (tx) => {
+  const submissionId = await db.transaction(async (tx) => {
     const submission = await tx.orm.public.Submission.create({
       partner,
       product,
@@ -270,8 +283,12 @@ export async function createSubmission(
         detail: "Selected for the 10% quality-assurance sample",
       });
     }
+    return submission.id;
   });
 
+  if (attachments.some((attachment) => attachment.kind === "file")) {
+    after(() => processAttachmentExtractions(submissionId));
+  }
   revalidatePath("/submissions");
   revalidatePath("/reviewer");
   redirect("/submissions?submitted=1");
@@ -331,6 +348,14 @@ export async function decide(
       const unresolvedHigh = checks.filter(
         (check) => !check.passed && !check.dismissed && check.severity === "high",
       ).length;
+      const attachments = await tx.orm.public.Attachment
+        .where({ submissionId })
+        .all();
+      if (attachments.some((attachment) => attachment.extractionStatus === "processing")) {
+        throw new ActionStateError(
+          "Attachment text extraction is still processing. Wait for it to finish before recording a decision.",
+        );
+      }
       if (decision === "approved" && unresolvedHigh > 0 && !comment) {
         throw new ActionStateError(
           `Approving with ${unresolvedHigh} unresolved high-severity flags requires a comment.`,
@@ -461,9 +486,13 @@ export async function updateSubmission(
   if (!CHANNELS.includes(channel as Channel)) {
     return { error: "Choose a valid marketing channel." };
   }
-  const extractedNewAttachments = await extractAttachments(newAttachments);
+  const queuedNewAttachments = queueAttachments(newAttachments);
+  let newSubmissionId: string;
+  let shouldProcessAttachments = queuedNewAttachments.some(
+    (attachment) => attachment.kind === "file",
+  );
   try {
-    await db.transaction(async (tx) => {
+    newSubmissionId = await db.transaction(async (tx) => {
       const currentRecords = await tx.orm.public.Submission.all();
       const selected = currentRecords.find((item) => item.id === submissionId);
       if (!selected || selected.submittedBy !== session.actor) {
@@ -503,6 +532,11 @@ export async function updateSubmission(
       const parentAttachments = await tx.orm.public.Attachment
         .where({ submissionId: parent.id })
         .all();
+      shouldProcessAttachments ||= parentAttachments.some(
+        (attachment) =>
+          attachment.kind === "file" &&
+          attachment.extractionStatus === "processing",
+      );
       if (parentAttachments.length + newAttachments.length > 5) {
         throw new ActionStateError("A request can have up to 5 attachments, including earlier versions.");
       }
@@ -511,7 +545,7 @@ export async function updateSubmission(
       }
       const attachments = [
         ...parentAttachments,
-        ...extractedNewAttachments,
+        ...queuedNewAttachments,
       ];
       const result = runSubmissionRules(
         creativeText,
@@ -575,12 +609,16 @@ export async function updateSubmission(
           detail: "Selected for the 10% quality-assurance sample",
         });
       }
+      return child.id;
     });
   } catch (error) {
     if (error instanceof ActionStateError) return { error: error.message };
     throw error;
   }
 
+  if (shouldProcessAttachments) {
+    after(() => processAttachmentExtractions(newSubmissionId));
+  }
   revalidatePath("/submissions");
   revalidatePath("/reviewer");
   revalidatePath("/reviewer/requests");

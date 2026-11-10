@@ -1,5 +1,6 @@
 import { Download, ExternalLink, FileText } from "lucide-react";
 import type { AttachmentRecord } from "@/lib/repository";
+import { ExtractionRefresh } from "@/components/extraction-refresh";
 
 export function AttachmentPreviews({
   attachments,
@@ -10,8 +11,14 @@ export function AttachmentPreviews({
 }) {
   if (!attachments.length) return null;
 
+  const hasProcessingAttachments = attachments.some(
+    (attachment) =>
+      attachment.kind === "file" && attachment.extractionStatus === "processing",
+  );
+
   return (
     <section className="content-card attachment-preview-card">
+      {showExtractedText && <ExtractionRefresh active={hasProcessingAttachments} />}
       <div className="content-card-heading">
         <div><FileText size={17} /><h2>Attachments</h2></div>
         <span>{attachments.length} {attachments.length === 1 ? "item" : "items"}</span>
@@ -72,6 +79,11 @@ export function AttachmentPreviews({
           </article>
         ))}
       </div>
+      {showExtractedText && hasProcessingAttachments && (
+        <p className="muted-copy">
+          Attachment screening is running. This page refreshes automatically when results are ready.
+        </p>
+      )}
       <p className="attachment-review-note">
         Supported PDFs and images are screened automatically, subject to processing limits; other files may not be. Extraction can miss content or visual context, so every attachment still requires manual review.
       </p>
@@ -83,6 +95,7 @@ function formatExtractionStatus(status: string) {
   const labels: Record<string, string> = {
     not_processed: "Not processed",
     not_applicable: "Not applicable",
+    processing: "Processing",
     extracted: "Complete",
     partial: "Partial",
     no_text: "No readable text",
