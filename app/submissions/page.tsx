@@ -5,10 +5,10 @@ import { QueryToast } from "@/components/query-toast";
 import { ClearFilters } from "@/components/clear-filters";
 import { SubmissionFilters } from "@/components/submission-filters";
 import { SubmissionTableRow } from "@/components/submission-table-row";
-import { RiskBadge, StatusBadge } from "@/components/submission-details";
+import { RequesterStatusBadge, RiskBadge } from "@/components/submission-details";
 import { TimeAgo } from "@/components/time-ago";
-import { titleCase } from "@/lib/format";
-import { PRODUCTS, STATUSES } from "@/lib/constants";
+import { requesterStatus, REQUESTER_STATUSES, titleCase } from "@/lib/format";
+import { PRODUCTS } from "@/lib/constants";
 import { getRuleChecks, getSubmissions } from "@/lib/repository";
 import { requireRole } from "@/lib/session";
 
@@ -36,11 +36,11 @@ export default async function SubmissionsPage({
   const ownedSubmissions = allSubmissions.filter((item) => item.submittedBy === session.actor && item.status !== "archived");
   const search = query.search?.trim() ?? "";
   const product = PRODUCTS.find((value) => value === query.product);
-  const status = STATUSES.find((value) => value === query.status && value !== "archived");
+  const status = REQUESTER_STATUSES.find((value) => value === query.status);
   const submissions = ownedSubmissions.filter((item) =>
     (!search || item.partner.toLocaleLowerCase().includes(search.toLocaleLowerCase())) &&
     (!product || item.product === product) &&
-    (!status || item.status === status),
+    (!status || requesterStatus(item.status) === status),
   );
   const hasFilters = Boolean(search || product || status);
   const checkGroups = new Map<string, typeof checks>();
@@ -87,6 +87,7 @@ export default async function SubmissionsPage({
               initialProduct={product ?? ""}
               initialStatus={status ?? ""}
               hasFilters={hasFilters}
+              requesterView
             />
           )}
           {submissions.length ? (
@@ -107,7 +108,7 @@ export default async function SubmissionsPage({
                         {submission.parentId && <small className="table-subline">Updated creative</small>}
                       </td>
                       <td><span className="product-text">{titleCase(submission.product)}</span><small className="table-subline">{titleCase(submission.channel)}</small></td>
-                      <td><StatusBadge status={submission.status} />{submission.qaSample && <span className="qa-tag">QA sample</span>}</td>
+                      <td><RequesterStatusBadge status={submission.status} /></td>
                       <td><RiskBadge checks={checkGroups.get(submission.id) ?? []} riskScore={submission.riskScore} /></td>
                       <td><span className="table-time"><TimeAgo date={submission.createdAt} /></span></td>
                     </SubmissionTableRow>

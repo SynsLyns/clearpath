@@ -277,7 +277,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .product-text { color: #59665f; font-size: 10px; }
 .status { display: inline-flex; align-items: center; gap: 4px; padding: 4px 7px; border: 1px solid transparent; border-radius: 99px; font-size: 9px; font-weight: 650; line-height: 1.15; white-space: nowrap; }
 .status-pending { color: #966020; border-color: #f1e4ce; background: #fff8eb; }
-.status-approved, .status-auto-cleared { color: #24744d; border-color: #d7ebdd; background: #edf8f0; }
+.status-approved, .status-auto-cleared, .status-accepted { color: #24744d; border-color: #d7ebdd; background: #edf8f0; }
 .status-rejected { color: #a5403a; border-color: #f1dcda; background: #fff2f0; }
 .status-changes_requested { color: #7761a0; border-color: #e8e1f2; background: #f7f3fc; }
 .status-superseded { color: #78827b; border-color: #e5e9e5; background: #f3f5f3; }

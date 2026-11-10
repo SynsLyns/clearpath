@@ -10,9 +10,9 @@ import {
   AuditTrail,
   FlagRows,
   HighlightedCreative,
+  RequesterStatusBadge,
   ReviewHistory,
   RiskBadge,
-  StatusBadge,
 } from "@/components/submission-details";
 import { QueryToast } from "@/components/query-toast";
 import { formatDate, titleCase } from "@/lib/format";
@@ -60,7 +60,7 @@ export default async function SubmissionDetailPage({
           eyebrow={`Submission · ${formatDate(submission.createdAt)}`}
           title={submission.partner}
           description={`${titleCase(submission.product)} · ${titleCase(submission.channel)} · Version ${submission.version}`}
-          action={<StatusBadge status={submission.status} />}
+          action={<RequesterStatusBadge status={submission.status} />}
         />
 
         <div className="detail-layout">
@@ -116,7 +116,10 @@ export default async function SubmissionDetailPage({
 
             <section className="content-card">
               <div className="content-card-heading"><div><Clock3 size={17} /><h2>Compliance decisions</h2></div></div>
-              <ReviewHistory reviews={allReviews.filter((review) => submissionIds.has(review.submissionId))} />
+              <ReviewHistory
+                reviews={allReviews.filter((review) => submissionIds.has(review.submissionId))}
+                requesterView
+              />
             </section>
           </div>
 
@@ -125,10 +128,11 @@ export default async function SubmissionDetailPage({
               submissions={lineage}
               currentId={submission.id}
               hrefFor={(versionId) => `/submissions/${versionId}`}
+              requesterView
             />
             <section className="content-card compact-card">
               <div className="content-card-heading"><div><Clock3 size={17} /><h2>Activity</h2></div></div>
-              <AuditTrail events={historyEvents} />
+              <AuditTrail events={historyEvents} requesterView />
             </section>
             <div className="detail-owner-note">
               <span>Submitted by</span><strong>{submission.submittedBy}</strong>

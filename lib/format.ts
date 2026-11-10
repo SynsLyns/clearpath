@@ -1,5 +1,8 @@
 import { STATUS_LABELS, STATUSES, type SubmissionStatus } from "./constants";
 
+export const REQUESTER_STATUSES = ["pending", "accepted", "rejected"] as const;
+export type RequesterStatus = (typeof REQUESTER_STATUSES)[number];
+
 export function titleCase(value: string): string {
   return value
     .split("_")
@@ -32,6 +35,21 @@ export function statusLabel(status: string): string {
   return (STATUSES as readonly string[]).includes(status)
     ? STATUS_LABELS[status as SubmissionStatus]
     : titleCase(status);
+}
+
+export function requesterStatus(status: string): RequesterStatus {
+  if (status === "approved" || status === "auto_cleared") return "accepted";
+  if (status === "rejected") return "rejected";
+  return "pending";
+}
+
+export function requesterStatusLabel(status: string): string {
+  const labels: Record<RequesterStatus, string> = {
+    pending: "Pending",
+    accepted: "Accepted",
+    rejected: "Rejected",
+  };
+  return labels[requesterStatus(status)];
 }
 
 export function riskClass(risk: "high" | "medium" | "clean"): string {

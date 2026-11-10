@@ -4,8 +4,17 @@ import { Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ClearFilters } from "@/components/clear-filters";
-import { PRODUCTS, STATUSES, STATUS_LABELS } from "@/lib/constants";
-import { titleCase } from "@/lib/format";
+import {
+  PRODUCTS,
+  STATUSES,
+  STATUS_LABELS,
+  type SubmissionStatus,
+} from "@/lib/constants";
+import {
+  REQUESTER_STATUSES,
+  requesterStatusLabel,
+  titleCase,
+} from "@/lib/format";
 
 export function SubmissionFilters({
   initialSearch,
@@ -14,6 +23,7 @@ export function SubmissionFilters({
   hasFilters,
   clearAction = "/submissions",
   includeArchived = false,
+  requesterView = false,
 }: {
   initialSearch: string;
   initialProduct: string;
@@ -21,6 +31,7 @@ export function SubmissionFilters({
   hasFilters: boolean;
   clearAction?: string;
   includeArchived?: boolean;
+  requesterView?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -29,7 +40,9 @@ export function SubmissionFilters({
   const [product, setProduct] = useState(initialProduct);
   const [status, setStatus] = useState(initialStatus);
   const query = searchParams.toString();
-  const statuses = includeArchived ? STATUSES : STATUSES.filter((value) => value !== "archived");
+  const statuses = requesterView
+    ? REQUESTER_STATUSES
+    : includeArchived ? STATUSES : STATUSES.filter((value) => value !== "archived");
 
   useEffect(() => {
     function syncFromLocation() {
@@ -104,7 +117,13 @@ export function SubmissionFilters({
           onChange={(event) => setStatus(event.currentTarget.value)}
         >
           <option value="">All statuses</option>
-          {statuses.map((value) => <option key={value} value={value}>{STATUS_LABELS[value]}</option>)}
+          {statuses.map((value) => (
+            <option key={value} value={value}>
+              {requesterView
+                ? requesterStatusLabel(value)
+                : STATUS_LABELS[value as SubmissionStatus]}
+            </option>
+          ))}
         </select>
       </label>
       {hasFilters && <ClearFilters action={clearAction} />}

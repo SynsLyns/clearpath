@@ -1,16 +1,24 @@
 import Link from "next/link";
 import { Clock3 } from "lucide-react";
-import { statusClass, statusLabel, titleCase } from "@/lib/format";
+import {
+  requesterStatus,
+  requesterStatusLabel,
+  statusClass,
+  statusLabel,
+  titleCase,
+} from "@/lib/format";
 import { getSubmissionVersionLineage, type SubmissionRecord } from "@/lib/repository";
 
 export function SubmissionVersionHistory({
   submissions,
   currentId,
   hrefFor,
+  requesterView = false,
 }: {
   submissions: readonly SubmissionRecord[];
   currentId: string;
   hrefFor: (id: string) => string;
+  requesterView?: boolean;
 }) {
   const versions = getSubmissionVersionLineage(submissions, currentId);
   if (!versions.length) return null;
@@ -27,7 +35,11 @@ export function SubmissionVersionHistory({
             <span className="version-dot" />
             <span>
               <strong>v{item.version} · This request</strong>
-              <small><span className={statusClass(item.status)}>{statusLabel(item.status)}</span></small>
+              <small>
+                <span className={statusClass(requesterView ? requesterStatus(item.status) : item.status)}>
+                  {requesterView ? requesterStatusLabel(item.status) : statusLabel(item.status)}
+                </span>
+              </small>
             </span>
           </div>
         ) : (
@@ -35,7 +47,9 @@ export function SubmissionVersionHistory({
             <span className="version-dot" />
             <span>
               <strong>v{item.version} · {item.parentId ? "Updated request" : "Original request"}</strong>
-              <small>{titleCase(item.status)}</small>
+              <small>
+                {requesterView ? requesterStatusLabel(item.status) : titleCase(item.status)}
+              </small>
             </span>
           </Link>
         ))}

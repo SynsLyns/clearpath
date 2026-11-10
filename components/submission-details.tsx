@@ -4,7 +4,13 @@ import { useActionState, useCallback, useEffect, useRef, useState } from "react"
 import { AlertCircle, Check, ChevronRight, Minus, X } from "lucide-react";
 import { decide, dismissFlag, type ActionState } from "@/app/actions";
 import { REASONS, type ReviewDecision } from "@/lib/constants";
-import { formatDate, statusLabel, titleCase } from "@/lib/format";
+import {
+  formatDate,
+  requesterStatus,
+  requesterStatusLabel,
+  statusLabel,
+  titleCase,
+} from "@/lib/format";
 import { getRiskLevel, getRuleAuthority, getRuleFix } from "@/lib/rules";
 import { TimeAgo } from "@/components/time-ago";
 import type {
@@ -17,6 +23,15 @@ const initialState: ActionState = {};
 
 export function StatusBadge({ status }: { status: string }) {
   return <span className={`status status-${status}`}>{statusLabel(status)}</span>;
+}
+
+export function RequesterStatusBadge({ status }: { status: string }) {
+  const displayStatus = requesterStatus(status);
+  return (
+    <span className={`status status-${displayStatus}`}>
+      {requesterStatusLabel(status)}
+    </span>
+  );
 }
 
 export function RuleAuthorityTag({ authority }: { authority: string }) {
@@ -85,15 +100,26 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export function AuditTrail({ events }: { events: readonly AuditEventRecord[] }) {
-  if (!events.length) return <p className="muted-copy">No audit events yet.</p>;
+export function AuditTrail({
+  events,
+  requesterView = false,
+}: {
+  events: readonly AuditEventRecord[];
+  requesterView?: boolean;
+}) {
+  const visibleEvents = requesterView
+    ? events.filter((event) =>
+      event.action !== "qa_sampled" && event.action !== "superseded",
+    )
+    : events;
+  if (!visibleEvents.length) return <p className="muted-copy">No activity yet.</p>;
   return (
     <ol className="audit-trail">
-      {events.map((event) => (
+      {visibleEvents.map((event) => (
         <li key={event.id}>
           <span className={`audit-marker audit-${event.action}`} />
           <div className="audit-copy">
-            <p>{auditSentence(event)}</p>
+            <p>{auditSentence(event, requesterView)}</p>
             <span className="audit-time" title={formatDate(event.createdAt)}>
               <TimeAgo date={event.createdAt} />
             </span>
@@ -104,7 +130,7 @@ export function AuditTrail({ events }: { events: readonly AuditEventRecord[] }) 
   );
 }
 
-function auditSentence(event: AuditEventRecord) {
+function auditSentence(event: AuditEventRecord, requesterView = false) {
   const labels: Record<string, string> = {
     submitted: "Submitted",
     auto_cleared: "Auto-cleared",
@@ -116,6 +142,13 @@ function auditSentence(event: AuditEventRecord) {
     resubmitted: "Resubmitted",
     superseded: "Superseded",
   };
+  if (requesterView && event.action === "auto_cleared") return "Accepted.";
+  if (requesterView && event.action === "approved") {
+    return `Accepted by ${event.actor}. ${event.detail}`;
+  }
+  if (requesterView && event.action === "changes_requested") {
+    return `Pending. ${event.detail}`;
+  }
   if (event.action === "submitted") return `Submitted by ${event.actor}. ${event.detail}`;
   if (event.action === "approved" || event.action === "rejected" || event.action === "changes_requested") {
     return `${labels[event.action]} by ${event.actor}. ${event.detail}`;
@@ -193,28 +226,43 @@ function DismissFlagForm({
   );
 }
 
-export function ReviewHistory({ reviews }: { reviews: readonly ReviewRecord[] }) {
+export function ReviewHistory({
+  reviews,
+  requesterView = false,
+}: {
+  reviews: readonly ReviewRecord[];
+  requesterView?: boolean;
+}) {
   if (!reviews.length) return <p className="muted-copy">No compliance decision has been recorded.</p>;
   return (
     <div className="review-history">
-      {reviews.map((review) => (
-        <article className="review-history-item" key={review.id}>
-          <div className="review-history-icon"><Check size={15} /></div>
-          <div>
-            <div className="review-history-title">
-              <strong>{review.reviewer}</strong>
-              <StatusBadge status={review.decision} />
+      {reviews.map((review) => {
+        const automaticallyAccepted = requesterView && review.decision === "auto_cleared";
+        return (
+          <article className="review-history-item" key={review.id}>
+            <div className="review-history-icon"><Check size={15} /></div>
+            <div>
+              <div className="review-history-title">
+                <strong>{automaticallyAccepted ? "ClearPath" : review.reviewer}</strong>
+                {requesterView
+                  ? <RequesterStatusBadge status={review.decision} />
+                  : <StatusBadge status={review.decision} />}
+              </div>
+              {!automaticallyAccepted && (
+                <>
+                  <p>
+                    {review.reasonCode
+                      ? REASONS[review.reasonCode as keyof typeof REASONS]?.label ?? titleCase(review.reasonCode)
+                      : `Rule set ${review.ruleVersion}`}
+                  </p>
+                  {review.comment && <blockquote>{review.comment}</blockquote>}
+                </>
+              )}
+              <small>{formatDate(review.createdAt)}</small>
             </div>
-            <p>
-              {review.reasonCode
-                ? REASONS[review.reasonCode as keyof typeof REASONS]?.label ?? titleCase(review.reasonCode)
-                : `Rule set ${review.ruleVersion}`}
-            </p>
-            {review.comment && <blockquote>{review.comment}</blockquote>}
-            <small>{formatDate(review.createdAt)}</small>
-          </div>
-        </article>
-      ))}
+          </article>
+        );
+      })}
     </div>
   );
 }
