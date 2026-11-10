@@ -18,8 +18,93 @@ import { parseAttachmentPayload } from "@/lib/attachments";
 import { assertRole } from "@/lib/session";
 import { db } from "@/src/prisma/db";
 import { runRules, type RuleResult } from "@/lib/rules";
+import {
+  buildExport,
+  EXPORT_KINDS,
+  exportFilterMetadata,
+  exportFilename,
+  parseExportFilters,
+  type ExportFilters,
+  type ExportKind,
+} from "@/lib/exports";
+import { toCsv } from "@/lib/csv";
 
 export type ActionState = { error?: string };
+
+function isExportFilters(value: unknown): value is ExportFilters {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const filters = value as Record<string, unknown>;
+  return (
+    (filters.from === undefined || typeof filters.from === "string") &&
+    (filters.to === undefined || typeof filters.to === "string") &&
+    (filters.partner === undefined || typeof filters.partner === "string") &&
+    (filters.product === undefined || typeof filters.product === "string") &&
+    (filters.channel === undefined || typeof filters.channel === "string") &&
+    (filters.status === undefined || typeof filters.status === "string") &&
+    (filters.includeCreativeText === undefined ||
+      typeof filters.includeCreativeText === "boolean" ||
+      typeof filters.includeCreativeText === "string")
+  );
+}
+
+export async function exportCsv(kindInput: unknown, filtersInput: unknown) {
+  const session = await assertRole("reviewer");
+  if (
+    typeof kindInput !== "string" ||
+    !(EXPORT_KINDS as readonly string[]).includes(kindInput)
+  ) {
+    throw new Error("Choose a valid export type.");
+  }
+  if (!isExportFilters(filtersInput)) {
+    throw new Error("Export filters are invalid.");
+  }
+
+  const kind = kindInput as ExportKind;
+  const filters = parseExportFilters(filtersInput);
+  if (kind !== "submissions") filters.includeCreativeText = false;
+  const { columns, rows } = await buildExport(kind, filters);
+  const csv = toCsv(columns, rows);
+  if (new TextEncoder().encode(csv).byteLength > 4_000_000) {
+    throw new Error("This export exceeds 4 MB. Narrow the date range or filters and try again.");
+  }
+
+  const loggedAt = new Date();
+  await db.orm.public.ExportLog.create({
+    actor: session.actor,
+    kind,
+    filters: exportFilterMetadata(filters),
+    rowCount: rows.length,
+    createdAt: loggedAt,
+  });
+  revalidatePath("/reviewer/exports");
+  return {
+    csv,
+    filename: exportFilename(kind, filters),
+    rowCount: rows.length,
+    loggedAt: loggedAt.toISOString(),
+  };
+}
+
+export async function logRecordExport(submissionIdInput: unknown) {
+  const session = await assertRole("reviewer");
+  if (typeof submissionIdInput !== "string" || !submissionIdInput.trim()) {
+    throw new Error("Choose a valid submission record.");
+  }
+  const submissionId = submissionIdInput.trim();
+  const submission = await db.orm.public.Submission.where({ id: submissionId }).first();
+  if (!submission) throw new Error("Submission record not found.");
+
+  const loggedAt = new Date();
+  await db.orm.public.ExportLog.create({
+    actor: session.actor,
+    kind: "record",
+    filters: "",
+    rowCount: 1,
+    createdAt: loggedAt,
+  });
+  revalidatePath("/reviewer/exports");
+  return loggedAt.toISOString();
+}
 
 export async function chooseRole(formData: FormData) {
   const role = formData.get("role");
