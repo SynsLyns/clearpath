@@ -27,13 +27,13 @@ The app uses server components for data-backed views and server actions for muta
 
 Reviewers can use **Exports** to download four filtered CSVs: the submissions register, decision log, audit events, and failed-rule detail. Filters cover the UTC date range, partner/campaign, product, channel, and status; the submissions register can optionally include creative text. CSV output uses Excel-safe formula-injection protection, UTF-8 BOM, and UTC timestamps. Exports are limited to 4 MB; narrow the filters if a download exceeds that cap.
 
-Each successful CSV download and printable compliance record is recorded in the append-only `ExportLog` with the reviewer, export type, filters, row count, and timestamp. Export actions check the reviewer role server-side. The printable submission record includes its version chain, creative, flags, decisions, activity, and attachment metadata; use the browser's **Print / Save as PDF**. File links remain authenticated ClearPath links. CSVs include attachment names and counts only, never stored Blob URLs. Attachments are stored privately and delivered through authenticated, short-lived links.
+Each successful CSV download and printable compliance record is recorded in `ExportLog` with the reviewer, export type, filters, row count, and timestamp. Export actions check the reviewer role server-side. The printable submission record includes its version chain, creative, flags, decisions, activity, and attachment metadata; use the browser's **Print / Save as PDF**. File links remain authenticated ClearPath links. CSVs include attachment names and counts only, never stored Blob URLs. Attachments are stored privately and delivered through authenticated, short-lived links.
 
 `RuleCheck` has no independent checked-at timestamp, so the flag export's `checked_at_utc` uses the associated submission's creation time. It should not be interpreted as a separately measured rule-engine execution time.
 
 ## Run locally
 
-Requirements: Node.js 26+ and npm.
+Requirements: Node.js 22+ and npm.
 
 1. Copy `.env.example` to `.env` and set `DATABASE_URL` to a development Postgres database. To enable file uploads, create a **private** Vercel Blob store, connect it to the project, and select **Add a read-write token env var to this connection**. Include Development for local use, then run `vercel env pull`. Blob access mode cannot be changed after creation; existing public blobs must be copied to the private store and the public originals deleted. Never commit the token; link-only submissions work without Blob credentials.
 2. Install and prepare the contract:
@@ -73,6 +73,7 @@ Authentication is intentionally stubbed. The role picker writes an HTTP-only rol
 - NMLS is required for mortgage and personal-loan creatives, but not credit-card creatives. In production Compliance would confirm this by state and product.
 - The rules are deliberately a small first-pass screen, not a legal interpretation or a replacement for reviewer judgment.
 - The displayed ClearPath NMLS ID (`12345678`) is fictional and exists only for the one-click disclosure helper.
+- A request can contain up to five files or links, with each uploaded file limited to 100 MB. Automatic text extraction supports PDF, JPEG, PNG, WebP, and TIFF files up to 8 MiB. PDF processing is capped at 20 pages per file and 30 pages per request; OCR is capped at eight pages per request. Source images are limited to 24 megapixels and rendered OCR images to eight megapixels / 3,500 pixels per dimension. Extracted text is capped at 40,000 characters per file and 120,000 per request. Files outside extraction limits remain available for manual review.
 - Attachments are stored in private Vercel Blob and routed to manual review. Authenticated file delivery checks the request role and submission ownership, then redirects to a five-minute, file-scoped signed Blob URL so file bytes are delivered by Blob rather than proxied through the app. Production should replace demo role cookies with real authentication and add malware scanning.
 - PDF and image text extraction runs locally after the submission response, so submitters do not wait for OCR. Reviewers see a processing status that refreshes until results are ready; decisions are blocked while an attachment is processing. The work uses Next.js `after()` within the Vercel function's configured maximum duration, not a durable external queue. Extracted text is retained with the attachment for reviewer use and is not included in CSV exports; request archiving retains it with the rest of the audit record.
 - Seed timestamps are relative to the current time so the queue and “waiting” indicators remain useful during a demo.

@@ -1,4 +1,4 @@
-import { ArrowRight, BadgeCheck, ClipboardCheck, Sparkles } from "lucide-react";
+import { ArrowRight, BadgeCheck, Sparkles } from "lucide-react";
 import { chooseRole } from "./actions";
 import { PageFooter } from "@/components/app-shell";
 
@@ -8,22 +8,6 @@ export default function Home() {
       <div className="landing-glow landing-glow-one" />
       <div className="landing-glow landing-glow-two" />
       <div className="landing-content">
-        <div className="landing-intro">
-          <div className="landing-kicker">
-            <Sparkles size={14} /> A better review loop starts here
-          </div>
-          <h1>Good marketing moves fast.<br /><span>Compliance should, too.</span></h1>
-          <p>
-            One clear path from campaign idea to compliant creative. Catch common
-            issues before review, keep every decision visible, and help your team
-            focus where judgment matters.
-          </p>
-          <div className="landing-points">
-            <span><BadgeCheck size={16} /> Instant creative checks</span>
-            <span><ClipboardCheck size={16} /> A review trail you can trust</span>
-          </div>
-        </div>
-
         <section className="role-picker" aria-labelledby="role-title">
           <div className="role-picker-heading">
             <p className="eyebrow">Demo workspace</p>

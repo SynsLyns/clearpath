@@ -160,15 +160,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .landing-glow { position: absolute; width: 500px; height: 500px; border-radius: 50%; filter: blur(1px); pointer-events: none; }
 .landing-glow-one { top: -350px; right: 2%; background: rgba(71, 159, 117, .2); }
 .landing-glow-two { bottom: 1%; left: -380px; background: rgba(33, 118, 102, .16); }
-.landing-content { position: relative; z-index: 1; display: grid; width: min(1050px, calc(100% - 48px)); flex: 1; grid-template-columns: 1.08fr .92fr; align-items: center; gap: clamp(45px, 8vw, 104px); margin: 0 auto; padding: 64px 0 76px; }
-.landing-intro { padding-bottom: 14px; }
-.landing-kicker { display: inline-flex; align-items: center; gap: 8px; padding: 7px 11px; color: #b5dac2; border: 1px solid rgba(169, 214, 188, .21); border-radius: 99px; background: rgba(80, 146, 111, .14); font-size: 10px; font-weight: 600; letter-spacing: .025em; }
-.landing-intro h1 { margin: 25px 0 17px; font-size: clamp(40px, 5vw, 61px); font-weight: 610; letter-spacing: -2.7px; line-height: 1.08; }
-.landing-intro h1 span { color: #a8d1b6; }
-.landing-intro > p { max-width: 465px; margin: 0; color: #b8c9c1; font-size: 15px; line-height: 1.85; }
-.landing-points { display: flex; flex-wrap: wrap; gap: 21px; margin-top: 30px; color: #cfdfd5; font-size: 11px; }
-.landing-points span { display: inline-flex; align-items: center; gap: 7px; }
-.landing-points svg { color: #87c49e; }
+.landing-content { position: relative; z-index: 1; display: grid; width: min(520px, calc(100% - 48px)); flex: 1; grid-template-columns: 1fr; align-items: center; margin: 0 auto; padding: 48px 0 60px; }
 .role-picker { padding: 27px; border: 1px solid rgba(235, 248, 239, .13); border-radius: 18px; background: rgba(255,255,255,.97); color: #24332d; box-shadow: 0 24px 70px rgba(3, 21, 17, .24); }
 .role-picker-heading { margin-bottom: 20px; }
 .role-picker-heading h2 { margin: 7px 0 4px; font-size: 21px; font-weight: 680; letter-spacing: -.65px; }
@@ -537,10 +529,7 @@ kbd { padding: 1px 3px; color: #64756a; border: 1px solid #dce4dd; border-radius
   .brand-product, .brand-divider { display: none; }
   .profile-area { gap: 10px; }
   .profile-name { display: none; }
-  .landing-content { grid-template-columns: 1fr; max-width: 620px; gap: 25px; padding-top: 55px; }
-  .landing-intro { text-align: center; }
-  .landing-intro > p { margin: 0 auto; }
-  .landing-points { justify-content: center; }
+  .landing-content { max-width: 520px; }
   .role-picker { max-width: 520px; width: 100%; margin: 0 auto; }
   .submit-layout { grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr); }
   .analytics-grid { grid-template-columns: repeat(2, 1fr); }
@@ -563,10 +552,7 @@ kbd { padding: 1px 3px; color: #64756a; border: 1px solid #dce4dd; border-radius
   .heading-action .button { width: 100%; }
   .page-footer { flex-wrap: wrap; gap: 2px 7px; font-size: 9px; text-align: center; }
   .landing { min-height: calc(100vh - 60px); }
-  .landing-content { width: calc(100% - 32px); gap: 23px; padding: 36px 0 46px; }
-  .landing-intro h1 { margin: 19px 0 12px; font-size: clamp(35px, 9.5vw, 49px); letter-spacing: -1.8px; }
-  .landing-intro > p { font-size: 12px; line-height: 1.7; }
-  .landing-points { gap: 13px; margin-top: 19px; font-size: 9px; }
+  .landing-content { width: calc(100% - 32px); padding: 36px 0 46px; }
   .role-picker { padding: 20px 17px; }
   .role-picker-heading h2 { font-size: 18px; }
   .role-option { min-height: 77px; gap: 10px; padding: 11px; }
