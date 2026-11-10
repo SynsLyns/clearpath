@@ -654,10 +654,13 @@ kbd { padding: 1px 3px; color: #64756a; border: 1px solid #dce4dd; border-radius
 .rules-scoring { display: grid; grid-template-columns: minmax(190px, .7fr) 1.3fr; gap: 20px; margin-bottom: 18px; padding: 18px; border: 1px solid #e4ebe5; border-radius: 12px; background: #fff; }
 .rules-scoring h2 { margin: 4px 0 0; color: #34443b; font-size: 15px; letter-spacing: -.3px; }
 .rules-scoring ul { display: grid; gap: 6px; margin: 0; padding-left: 18px; color: #6f7d73; font-size: 10px; }
-.rules-filter-form { display: grid; grid-template-columns: minmax(180px, 1.5fr) repeat(3, minmax(115px, 1fr)) auto auto; align-items: end; gap: 9px; padding: 15px; border: 1px solid #e5eae5; border-radius: 11px; background: #fff; }
+.rules-filter-form { display: grid; grid-template-columns: minmax(180px, 1.5fr) repeat(3, minmax(115px, 1fr)) auto; align-items: end; gap: 9px; padding: 15px; border: 1px solid #e5eae5; border-radius: 11px; background: #fff; }
 .rules-filter-form .field { gap: 4px; }
 .rules-filter-form .field > span { color: #68766d; font-size: 9px; font-weight: 650; }
 .rules-filter-form input, .rules-filter-form select { min-width: 0; min-height: 36px; padding: 7px 9px; color: #405047; border: 1px solid #e0e7e1; border-radius: 7px; background: #fff; font-size: 10px; }
+.rules-search-input { position: relative; }
+.rules-search-input > svg { position: absolute; top: 11px; left: 10px; color: #88948c; pointer-events: none; }
+.rules-search-input input { width: 100%; padding-left: 29px; }
 .rules-filter-form .button { min-height: 36px; padding: 0 10px; white-space: nowrap; font-size: 10px; }
 .rules-result-heading { display: flex; justify-content: space-between; gap: 12px; margin: 18px 2px 9px; color: #758179; font-size: 10px; }
 .rules-result-heading strong { color: #435248; }

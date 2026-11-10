@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageContainer, PageFooter, PageHeading } from "@/components/app-shell";
+import { RulesFilters } from "@/components/rules-filters";
 import { CHANNELS, PRODUCTS, QA_SAMPLE_RATE, SEVERITY_WEIGHTS, SLA_HOURS, type Channel, type Product } from "@/lib/constants";
 import { titleCase } from "@/lib/format";
-import { RULES, RULE_VERSION, type Severity } from "@/lib/rules";
+import { RULES, RULE_VERSION } from "@/lib/rules";
 import { getSession } from "@/lib/session";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -111,37 +111,12 @@ export default async function RulesPage({
           </ul>
         </section>
 
-        <form className="rules-filter-form" action="/rules" method="get">
-          <label className="field">
-            <span>Search rules</span>
-            <input name="q" defaultValue={query} placeholder="Search title, authority, or guidance" />
-          </label>
-          <label className="field">
-            <span>Product</span>
-            <select name="product" defaultValue={selectedProduct}>
-              <option value="all">All products</option>
-              {PRODUCTS.map((product) => <option value={product} key={product}>{titleCase(product)}</option>)}
-            </select>
-          </label>
-          <label className="field">
-            <span>Channel</span>
-            <select name="channel" defaultValue={selectedChannel}>
-              <option value="all">All channels</option>
-              {CHANNELS.map((channel) => <option value={channel} key={channel}>{titleCase(channel)}</option>)}
-            </select>
-          </label>
-          <label className="field">
-            <span>Severity</span>
-            <select name="severity" defaultValue={selectedSeverity}>
-              <option value="all">All severities</option>
-              {(["high", "medium"] as const satisfies readonly Severity[]).map((severity) => (
-                <option value={severity} key={severity}>{titleCase(severity)}</option>
-              ))}
-            </select>
-          </label>
-          <button className="button button-primary">Filter rules</button>
-          <Link className="button button-outline" href="/rules">Clear filters</Link>
-        </form>
+        <RulesFilters
+          initialSearch={query}
+          initialProduct={selectedProduct}
+          initialChannel={selectedChannel}
+          initialSeverity={selectedSeverity}
+        />
 
         <div className="rules-result-heading" aria-live="polite">
           <strong>{filteredRules.length} {filteredRules.length === 1 ? "rule" : "rules"}</strong>
