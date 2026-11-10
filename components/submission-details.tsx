@@ -223,31 +223,34 @@ export function DecisionForm({
   submissionId,
   unresolvedHigh,
   autoDraftComment,
+  extractionProcessing = false,
   nextHref,
   previousHref,
 }: {
   submissionId: string;
   unresolvedHigh: number;
   autoDraftComment: string;
+  extractionProcessing?: boolean;
   nextHref?: string;
   previousHref?: string;
 }) {
   const boundAction = decide.bind(null, submissionId);
   const [state, formAction, pending] = useActionState(boundAction, initialState);
-  const [decision, setDecision] = useState<ReviewDecision>("approved");
+  const [decision, setDecision] = useState<ReviewDecision | null>(null);
   const [comment, setComment] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
 
   const chooseDecision = useCallback((nextDecision: ReviewDecision) => {
+    if (extractionProcessing) return;
     setDecision(nextDecision);
     setComment(nextDecision === "approved" ? "" : autoDraftComment);
-  }, [autoDraftComment]);
+  }, [autoDraftComment, extractionProcessing]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
         event.preventDefault();
-        formRef.current?.requestSubmit();
+        if (decision && !extractionProcessing) formRef.current?.requestSubmit();
         return;
       }
       if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
@@ -263,7 +266,7 @@ export function DecisionForm({
         c: "changes_requested",
         r: "rejected",
       };
-      if (decisions[key]) {
+      if (decisions[key] && !extractionProcessing) {
         event.preventDefault();
         chooseDecision(decisions[key]);
       } else if (key === "j" && nextHref) {
@@ -274,7 +277,7 @@ export function DecisionForm({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [chooseDecision, nextHref, previousHref]);
+  }, [chooseDecision, decision, extractionProcessing, nextHref, previousHref]);
 
   return (
     <form ref={formRef} className="decision-form" action={formAction}>
@@ -288,6 +291,7 @@ export function DecisionForm({
             className={`decision-choice ${className} ${decision === value ? "selected" : ""}`}
             type="button"
             aria-pressed={decision === value}
+            disabled={extractionProcessing || pending}
             key={value}
             onClick={() => chooseDecision(value)}
           >
@@ -295,7 +299,12 @@ export function DecisionForm({
           </button>
         ))}
       </div>
-      <input type="hidden" name="decision" value={decision} />
+      <input type="hidden" name="decision" value={decision ?? ""} />
+      {extractionProcessing && (
+        <p className="decision-warning">
+          <AlertCircle size={16} /> Attachment screening is still processing. Decisions will be enabled when it finishes.
+        </p>
+      )}
       {decision === "approved" && unresolvedHigh > 0 && (
         <p className="decision-warning">
           <AlertCircle size={16} /> Approving with {unresolvedHigh} unresolved high-severity {unresolvedHigh === 1 ? "flag" : "flags"} requires a comment.
@@ -303,7 +312,7 @@ export function DecisionForm({
       )}
       <label className="field">
         <span>Decision reason {decision !== "approved" && <b>*</b>}</span>
-        <select name="reasonCode" defaultValue="">
+        <select name="reasonCode" defaultValue="" disabled={extractionProcessing}>
           <option value="">Select a reason</option>
           {Object.entries(REASONS)
             .filter(([code]) => decision === "approved" || (code !== "no_issues" && code !== "false_positive_flags"))
@@ -315,13 +324,14 @@ export function DecisionForm({
         <textarea
           name="comment"
           rows={3}
+          disabled={extractionProcessing}
           value={comment}
           onChange={(event) => setComment(event.currentTarget.value)}
           placeholder="Share context, next steps, or what needs to change..."
         />
       </label>
       {state.error && <p className="form-error" role="alert"><AlertCircle size={16} />{state.error}</p>}
-      <button className="button button-primary decision-submit" disabled={pending}>
+      <button className="button button-primary decision-submit" disabled={pending || extractionProcessing || !decision}>
         {pending ? "Recording decision…" : "Record compliance decision"}
         <ChevronRight size={16} />
       </button>

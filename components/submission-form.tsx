@@ -2,7 +2,13 @@
 
 import { useActionState, useCallback, useMemo, useState } from "react";
 import { AlertCircle, CheckCircle2, Info, Sparkles } from "lucide-react";
-import { CHANNELS, PRODUCTS, type Channel, type Product } from "@/lib/constants";
+import {
+  CHANNELS,
+  PRODUCTS,
+  RULE_VERSION,
+  type Channel,
+  type Product,
+} from "@/lib/constants";
 import { AttachmentUploader } from "@/components/attachment-uploader";
 import { InsertDisclosuresButton } from "@/components/insert-disclosures-button";
 import { RuleAuthorityTag } from "@/components/submission-details";
@@ -43,8 +49,8 @@ function CheckGroup({
 
 export function SubmissionForm() {
   const [state, formAction, pending] = useActionState(createSubmission, initialState);
-  const [product, setProduct] = useState<Product>("personal_loan");
-  const [channel, setChannel] = useState<Channel>("affiliate");
+  const [product, setProduct] = useState<Product | "">("");
+  const [channel, setChannel] = useState<Channel | "">("");
   const [creative, setCreative] = useState("");
   const [attachmentNames, setAttachmentNames] = useState<string[]>([]);
   const [uploadsReady, setUploadsReady] = useState(true);
@@ -53,11 +59,16 @@ export function SubmissionForm() {
     setUploadsReady(ready);
   }, []);
 
-  const result = useMemo(
-    () => runRules(creative, product, channel, attachmentNames.map((name) => ({ name }))),
-    [attachmentNames, creative, product, channel],
-  );
-  const failures = result.checks.filter((check) => !check.passed);
+  const result = useMemo(() => {
+    if (!product || !channel) return null;
+    return runRules(
+      creative,
+      product,
+      channel,
+      attachmentNames.map((name) => ({ name })),
+    );
+  }, [attachmentNames, creative, product, channel]);
+  const failures = result?.checks.filter((check) => !check.passed) ?? [];
   const high = failures.filter((check) => check.severity === "high");
   const medium = failures.filter((check) => check.severity === "medium");
 
@@ -82,8 +93,10 @@ export function SubmissionForm() {
               <select
                 name="product"
                 value={product}
-                onChange={(event) => setProduct(event.target.value as Product)}
+                required
+                onChange={(event) => setProduct(event.target.value as Product | "")}
               >
+                <option value="">Select a product</option>
                 {PRODUCTS.map((item) => <option key={item} value={item}>{titleCase(item)}</option>)}
               </select>
             </label>
@@ -92,8 +105,10 @@ export function SubmissionForm() {
               <select
                 name="channel"
                 value={channel}
-                onChange={(event) => setChannel(event.target.value as Channel)}
+                required
+                onChange={(event) => setChannel(event.target.value as Channel | "")}
               >
+                <option value="">Select a channel</option>
                 {CHANNELS.map((item) => <option key={item} value={item}>{titleCase(item)}</option>)}
               </select>
             </label>
@@ -128,11 +143,17 @@ export function SubmissionForm() {
       <aside className="self-check-card" aria-live="polite">
         <div className="self-check-heading">
           <span className="self-check-icon"><Sparkles size={17} /></span>
-          <div><h2>Creative self-check</h2><p>Live checks · Rule set v1</p></div>
+          <div><h2>Live copy checks</h2><p>Rule set {RULE_VERSION}</p></div>
           <span className="live-indicator"><i /> Live</span>
         </div>
         <div className="self-check-content">
-          {!creative.trim() && attachmentNames.length === 0 ? (
+          {!product || !channel ? (
+            <div className="self-check-empty">
+              <div className="self-check-empty-icon"><Info size={20} /></div>
+              <strong>Choose a product and channel</strong>
+              <p>We use these details to select the relevant live copy checks.</p>
+            </div>
+          ) : !creative.trim() && attachmentNames.length === 0 ? (
             <div className="self-check-empty">
               <div className="self-check-empty-icon"><Info size={20} /></div>
               <strong>Start with your creative</strong>
@@ -142,7 +163,7 @@ export function SubmissionForm() {
             <>
               <div className="self-check-summary">
                 <strong>{high.length} high, {medium.length} medium flags</strong>
-                <span>Fix these before submitting to avoid a longer review.</span>
+                <span>Review these flags; Compliance will see them with your submission.</span>
               </div>
               <CheckGroup title="Needs attention" checks={high} tone="high" />
               <CheckGroup title="Review" checks={medium} tone="medium" />
@@ -160,7 +181,7 @@ export function SubmissionForm() {
             <div className="self-check-clear">
               <CheckCircle2 size={25} />
               <strong>No rule flags</strong>
-              <p>Eligible for auto-clear. A small quality sample may still be reviewed by Compliance.</p>
+              <p>Copy checks found no flags. Attachments are screened after submission, and every request still receives the appropriate review.</p>
             </div>
           )}
           {attachmentNames.length > 0 && (

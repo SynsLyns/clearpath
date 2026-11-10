@@ -67,6 +67,16 @@ export default async function ReviewerDetailPage({
   const unresolvedHigh = bundle.checks.filter(
     (check) => !check.passed && !check.dismissed && check.severity === "high",
   ).length;
+  const unresolvedMedium = bundle.checks.filter(
+    (check) => !check.passed && !check.dismissed && check.severity === "medium",
+  ).length;
+  const unresolvedCount = bundle.checks.filter(
+    (check) => !check.passed && !check.dismissed,
+  ).length;
+  const extractionProcessing = bundle.attachments.some(
+    (attachment) =>
+      attachment.kind === "file" && attachment.extractionStatus === "processing",
+  );
   const undismissedMessages = bundle.checks
     .filter((check) => !check.passed && !check.dismissed)
     .map((check) => check.message);
@@ -99,13 +109,39 @@ export default async function ReviewerDetailPage({
             </div>
           }
         />
+        <section className="review-overview" aria-label="Review summary">
+          <a href="#rule-flags">
+            <strong>{unresolvedCount}</strong>
+            <span>unresolved flags</span>
+          </a>
+          <a href="#rule-flags">
+            <strong>{unresolvedHigh} high · {unresolvedMedium} medium</strong>
+            <span>flag severity</span>
+          </a>
+          <a href="#attachments">
+            <strong>
+              {extractionProcessing
+                ? "Screening in progress"
+                : bundle.attachments.length
+                  ? `${bundle.attachments.length} attachment${bundle.attachments.length === 1 ? "" : "s"}`
+                  : "No attachments"}
+            </strong>
+            <span>
+              {extractionProcessing
+                ? "Decision available when complete"
+                : bundle.attachments.length
+                  ? "Manual review required"
+                  : "No file screening needed"}
+            </span>
+          </a>
+        </section>
         <div className="reviewer-workspace">
           <div className="reviewer-main">
             {submission.version > 1 && parent && (
               <section className="content-card changes-card">
                 <div className="content-card-heading">
                   <div><GitCompareArrows size={17} /><h2>Changes since v1</h2></div>
-                  <Link href={`/submissions/${parent.id}`}>View previous version <ArrowRight size={14} /></Link>
+                  <Link href={detailHref(parent.id)}>View previous version <ArrowRight size={14} /></Link>
                 </div>
                 <ChangeSummary prior={parentChecks} current={bundle.checks} />
                 {parentReview && (
@@ -127,9 +163,11 @@ export default async function ReviewerDetailPage({
               <div className="creative-meta"><span>Submitted by {submission.submittedBy}</span><RiskBadge checks={bundle.checks} riskScore={submission.riskScore} /></div>
             </section>
 
-            <AttachmentPreviews attachments={bundle.attachments} showExtractedText />
+            <div id="attachments">
+              <AttachmentPreviews attachments={bundle.attachments} showExtractedText />
+            </div>
 
-            <section className="content-card">
+            <section className="content-card" id="rule-flags">
               <div className="content-card-heading">
                 <div><Clock3 size={17} /><h2>Rule flags</h2></div>
                 <span>{bundle.checks.filter((check) => !check.passed && !check.dismissed).length} unresolved</span>
@@ -151,7 +189,7 @@ export default async function ReviewerDetailPage({
             <SubmissionVersionHistory
               submissions={lineage}
               currentId={submission.id}
-              hrefFor={(versionId) => `/reviewer/${versionId}?from=all`}
+              hrefFor={detailHref}
             />
             {submission.status === "pending" ? (
               <section className="content-card decision-card">
@@ -164,8 +202,9 @@ export default async function ReviewerDetailPage({
                   submissionId={submission.id}
                   unresolvedHigh={unresolvedHigh}
                   autoDraftComment={autoDraftComment}
-                  nextHref={next ? `/reviewer/${next.id}` : undefined}
-                  previousHref={previous ? `/reviewer/${previous.id}` : undefined}
+                  extractionProcessing={extractionProcessing}
+                  nextHref={next ? detailHref(next.id) : undefined}
+                  previousHref={previous ? detailHref(previous.id) : undefined}
                 />
               </section>
             ) : (

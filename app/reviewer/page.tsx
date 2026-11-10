@@ -73,11 +73,31 @@ export default async function ReviewerQueuePage({
     },
   };
   const attachmentCounts = new Map<string, number>();
+  const processingAttachmentCounts = new Map<string, number>();
+  const extractionIssueCounts = new Map<string, number>();
+  const extractionIssueStatuses = new Set([
+    "failed",
+    "partial",
+    "no_text",
+    "unsupported",
+    "limit_exceeded",
+  ]);
   for (const attachment of attachments) {
     attachmentCounts.set(
       attachment.submissionId,
       (attachmentCounts.get(attachment.submissionId) ?? 0) + 1,
     );
+    if (attachment.extractionStatus === "processing") {
+      processingAttachmentCounts.set(
+        attachment.submissionId,
+        (processingAttachmentCounts.get(attachment.submissionId) ?? 0) + 1,
+      );
+    } else if (extractionIssueStatuses.has(attachment.extractionStatus)) {
+      extractionIssueCounts.set(
+        attachment.submissionId,
+        (extractionIssueCounts.get(attachment.submissionId) ?? 0) + 1,
+      );
+    }
   }
   const queue = pending.filter((item) => {
     return (
@@ -139,6 +159,10 @@ export default async function ReviewerQueuePage({
           {queue.length ? queue.map((submission, index) => {
             const rowChecks = (checkGroups.get(submission.id) ?? []).filter((check) => !check.passed && !check.dismissed);
             const topFlag = [...rowChecks].sort((a, b) => (a.severity === "high" ? -1 : 1) - (b.severity === "high" ? -1 : 1))[0];
+            const highCount = rowChecks.filter((check) => check.severity === "high").length;
+            const mediumCount = rowChecks.filter((check) => check.severity === "medium").length;
+            const processingAttachmentCount = processingAttachmentCounts.get(submission.id) ?? 0;
+            const extractionIssueCount = extractionIssueCounts.get(submission.id) ?? 0;
             const breachedItem = isSlaBreached(submission.createdAt);
             return (
               <Link className={`queue-card ${breachedItem ? "queue-card-breached" : ""}`} href={`/reviewer/${submission.id}`} key={submission.id}>
@@ -154,6 +178,16 @@ export default async function ReviewerQueuePage({
                           {attachmentCounts.get(submission.id)} attachment{attachmentCounts.get(submission.id) === 1 ? "" : "s"}
                         </span>
                       )}
+                      {processingAttachmentCount > 0 && (
+                        <span className="attachment-processing-tag">
+                          Screening {processingAttachmentCount} attachment{processingAttachmentCount === 1 ? "" : "s"}
+                        </span>
+                      )}
+                      {extractionIssueCount > 0 && (
+                        <span className="attachment-issue-tag">
+                          Review {extractionIssueCount} attachment{extractionIssueCount === 1 ? "" : "s"}
+                        </span>
+                      )}
                       {breachedItem && <span className="sla-tag"><AlertTriangle size={12} /> SLA breached</span>}
                     </div>
                     <RiskBadge checks={checkGroups.get(submission.id) ?? []} riskScore={submission.riskScore} />
@@ -164,17 +198,23 @@ export default async function ReviewerQueuePage({
                     <span>Submitted by {submission.submittedBy.split(" (")[0]}</span>
                   </div>
                   <div className="queue-card-bottom">
-                    {topFlag ? (
-                      <p className="queue-flag">
-                        <ShieldAlert size={15} />
-                        <span>
-                          <b>{topFlag.ruleId}</b> {topFlag.message}{" "}
-                          <RuleAuthorityTag authority={topFlag.authority ?? getRuleAuthority(topFlag.ruleId)} />
-                        </span>
+                    <div className="queue-flag-summary">
+                      <p className="queue-flag-counts" aria-label={`${highCount} high, ${mediumCount} medium unresolved flags`}>
+                        <span className="queue-flag-high">{highCount} high</span>
+                        <span className="queue-flag-medium">{mediumCount} medium</span>
                       </p>
-                    ) : (
-                      <p className="queue-flag queue-flag-clean"><Clock3 size={15} /><span>Selected for a quality-assurance review</span></p>
-                    )}
+                      {topFlag ? (
+                        <p className="queue-flag">
+                          <ShieldAlert size={15} />
+                          <span>
+                            <b>{topFlag.ruleId}</b> {topFlag.message}{" "}
+                            <RuleAuthorityTag authority={topFlag.authority ?? getRuleAuthority(topFlag.ruleId)} />
+                          </span>
+                        </p>
+                      ) : (
+                        <p className="queue-flag queue-flag-clean"><Clock3 size={15} /><span>Selected for a quality-assurance review</span></p>
+                      )}
+                    </div>
                     <span className="queue-wait">Waiting <WaitingTime date={submission.createdAt} /></span>
                   </div>
                 </div>
